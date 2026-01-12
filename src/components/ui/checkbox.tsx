@@ -11,8 +11,17 @@ export interface CheckboxProps
 
 const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
   ({ className, onCheckedChange, checked, ...props }, ref) => {
+    const internalRef = React.useRef<HTMLInputElement>(null)
+    const inputRef = (ref as React.RefObject<HTMLInputElement>) || internalRef
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       onCheckedChange?.(e.target.checked)
+    }
+
+    const handleClick = () => {
+      if (inputRef.current) {
+        inputRef.current.click()
+      }
     }
 
     return (
@@ -20,7 +29,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         <input
           type="checkbox"
           className="sr-only peer"
-          ref={ref}
+          ref={inputRef}
           checked={checked}
           onChange={handleChange}
           {...props}
@@ -34,12 +43,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             'flex items-center justify-center cursor-pointer',
             className
           )}
-          onClick={() => {
-            const input = ref as React.RefObject<HTMLInputElement>
-            if (input?.current) {
-              input.current.click()
-            }
-          }}
+          onClick={handleClick}
         >
           {checked && <Check className="h-3 w-3 text-white" />}
         </div>
