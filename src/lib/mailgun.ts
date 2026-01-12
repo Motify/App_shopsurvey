@@ -2,16 +2,24 @@ import Mailgun from 'mailgun.js'
 import FormData from 'form-data'
 import type { MailgunMessageData } from 'mailgun.js'
 
-const mailgun = new Mailgun(FormData)
+// Lazy initialization to avoid errors during build when env vars aren't set
+let mg: ReturnType<InstanceType<typeof Mailgun>['client']> | null = null
 
-// Check if EU region is needed (set MAILGUN_EU=true in .env if using EU)
-const isEU = process.env.MAILGUN_EU === 'true'
-
-const mg = mailgun.client({
-  username: 'api',
-  key: process.env.MAILGUN_API_KEY || '',
-  url: isEU ? 'https://api.eu.mailgun.net' : 'https://api.mailgun.net',
-})
+function getMailgunClient() {
+  if (!process.env.MAILGUN_API_KEY) {
+    return null
+  }
+  if (!mg) {
+    const mailgun = new Mailgun(FormData)
+    const isEU = process.env.MAILGUN_EU === 'true'
+    mg = mailgun.client({
+      username: 'api',
+      key: process.env.MAILGUN_API_KEY,
+      url: isEU ? 'https://api.eu.mailgun.net' : 'https://api.mailgun.net',
+    })
+  }
+  return mg
+}
 
 const domain = process.env.MAILGUN_DOMAIN || ''
 const fromEmail = process.env.EMAIL_FROM || 'noreply@shopsurvey.com'
@@ -24,7 +32,8 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
-  if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
+  const client = getMailgunClient()
+  if (!client || !process.env.MAILGUN_DOMAIN) {
     console.warn('Mailgun not configured. Email not sent:', { to, subject })
     return { id: 'mock-id', message: 'Email skipped (Mailgun not configured)' }
   }
@@ -38,7 +47,7 @@ export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
       html,
     } as MailgunMessageData
 
-    const result = await mg.messages.create(domain, messageData)
+    const result = await client.messages.create(domain, messageData)
     return result
   } catch (error) {
     console.error('Failed to send email:', error)
