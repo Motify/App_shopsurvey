@@ -1,11 +1,19 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -25,6 +33,7 @@ import {
   AlertCircle,
   CheckCircle,
   X,
+  Search,
 } from 'lucide-react'
 
 interface Admin {
@@ -306,15 +315,56 @@ function CSVImportModal({
   )
 }
 
+type SortOption = 'name' | 'email' | 'status' | 'access'
+
 export default function AdminsPage() {
   const [admins, setAdmins] = useState<Admin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showImportModal, setShowImportModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<SortOption>('name')
 
   useEffect(() => {
     fetchAdmins()
   }, [])
+
+  // Filter and sort admins
+  const filteredAdmins = useMemo(() => {
+    let result = [...admins]
+
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(
+        (admin) =>
+          admin.name.toLowerCase().includes(query) ||
+          admin.email.toLowerCase().includes(query)
+      )
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'email':
+          return a.email.localeCompare(b.email)
+        case 'status':
+          const statusOrder = { ACTIVE: 0, PENDING: 1, INACTIVE: 2 }
+          return statusOrder[a.status] - statusOrder[b.status]
+        case 'access':
+          // Full access first
+          if (a.isFullAccess && !b.isFullAccess) return -1
+          if (!a.isFullAccess && b.isFullAccess) return 1
+          return a.name.localeCompare(b.name)
+        default:
+          return 0
+      }
+    })
+
+    return result
+  }, [admins, searchQuery, sortBy])
 
   const fetchAdmins = async () => {
     try {
@@ -418,10 +468,36 @@ export default function AdminsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            管理者一覧
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              管理者一覧
+            </CardTitle>
+            {admins.length > 0 && (
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 w-64"
+                  />
+                </div>
+                <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">名前順</SelectItem>
+                    <SelectItem value="email">メール順</SelectItem>
+                    <SelectItem value="status">ステータス順</SelectItem>
+                    <SelectItem value="access">アクセスレベル順</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {admins.length === 0 ? (
@@ -434,6 +510,11 @@ export default function AdminsPage() {
                   管理者を招待
                 </Button>
               </Link>
+            </div>
+          ) : filteredAdmins.length === 0 ? (
+            <div className="text-center py-8">
+              <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">検索結果がありません</p>
             </div>
           ) : (
             <Table>
@@ -448,7 +529,7 @@ export default function AdminsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {admins.map((admin) => (
+                {filteredAdmins.map((admin) => (
                   <TableRow key={admin.id}>
                     <TableCell className="font-medium">{admin.name}</TableCell>
                     <TableCell className="text-muted-foreground">{admin.email}</TableCell>
