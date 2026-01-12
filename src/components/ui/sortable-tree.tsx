@@ -319,6 +319,12 @@ export interface SortableTreeProps<T extends TreeItem> {
   renderActions?: (item: T) => React.ReactNode
   emptyMessage?: string
   className?: string
+  // Controlled search/sort props
+  searchQuery?: string
+  onSearchChange?: (query: string) => void
+  sortValue?: string
+  onSortChange?: (value: string) => void
+  hideControls?: boolean
 }
 
 export function SortableTree<T extends TreeItem>({
@@ -336,9 +342,21 @@ export function SortableTree<T extends TreeItem>({
   renderActions,
   emptyMessage = 'アイテムがありません',
   className,
+  // Controlled props
+  searchQuery: controlledSearchQuery,
+  onSearchChange,
+  sortValue: controlledSortValue,
+  onSortChange,
+  hideControls = false,
 }: SortableTreeProps<T>) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortValue, setSortValue] = useState(defaultSortValue)
+  const [internalSearchQuery, setInternalSearchQuery] = useState('')
+  const [internalSortValue, setInternalSortValue] = useState(defaultSortValue)
+
+  // Use controlled or internal state
+  const searchQuery = controlledSearchQuery ?? internalSearchQuery
+  const setSearchQuery = onSearchChange ?? setInternalSearchQuery
+  const sortValue = controlledSortValue ?? internalSortValue
+  const setSortValue = onSortChange ?? setInternalSortValue
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     // Default expand parents with children
     const parents = new Set<string>()
@@ -494,7 +512,7 @@ export function SortableTree<T extends TreeItem>({
     <TreeContext.Provider value={contextValue}>
       <div className={cn('space-y-4', className)}>
         {/* Search and Sort Controls */}
-        {(enableSearch || enableSort) && (
+        {!hideControls && (enableSearch || enableSort) && (
           <div className="flex items-center gap-4">
             {enableSearch && (
               <div className="relative flex-1 max-w-sm">

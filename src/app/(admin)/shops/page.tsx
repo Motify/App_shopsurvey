@@ -31,7 +31,16 @@ import {
   AlertCircle,
   CheckCircle,
   GripVertical,
+  Search,
 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import Papa from 'papaparse'
 
@@ -568,6 +577,8 @@ export default function ShopsPage() {
   const [previewShop, setPreviewShop] = useState<Shop | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortValue, setSortValue] = useState('name')
 
   useEffect(() => {
     fetchShops()
@@ -765,30 +776,57 @@ export default function ShopsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Shop Hierarchy</CardTitle>
-            {selectedIds.size > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {selectedIds.size} selected
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkDownload}
-                  disabled={downloading}
-                >
-                  {downloading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  Download ZIP
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleBulkPrint}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print All
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-4">
+              {shops.length > 0 && (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="検索..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 w-64"
+                    />
+                  </div>
+                  <Select value={sortValue} onValueChange={setSortValue}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shopSortOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 border-l pl-4">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedIds.size} selected
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBulkDownload}
+                    disabled={downloading}
+                  >
+                    {downloading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Download ZIP
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleBulkPrint}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print All
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -835,6 +873,11 @@ export default function ShopsPage() {
                 onReorder={handleReorder}
                 renderItem={renderShopItem}
                 emptyMessage="店舗がありません"
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                sortValue={sortValue}
+                onSortChange={setSortValue}
+                hideControls={true}
               />
             </>
           )}
