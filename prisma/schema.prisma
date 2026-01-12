@@ -95,15 +95,16 @@ model Company {
 // ============================================
 
 model Shop {
-  id        String     @id @default(cuid())
-  companyId String     @map("company_id")
-  parentId  String?    @map("parent_id")
-  name      String
-  address   String?
-  qrCode    String     @unique @map("qr_code")
-  status    ShopStatus @default(ACTIVE)
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+  id         String     @id @default(cuid())
+  companyId  String     @map("company_id")
+  parentId   String?    @map("parent_id")
+  shopNumber String?    @map("shop_number")
+  name       String
+  address    String?
+  qrCode     String     @unique @map("qr_code")
+  status     ShopStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   company          Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
   parent           Shop?                 @relation("ShopHierarchy", fields: [parentId], references: [id], onDelete: SetNull)

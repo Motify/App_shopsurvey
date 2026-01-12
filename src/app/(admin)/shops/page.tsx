@@ -1,10 +1,16 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  SortableTree,
+  TreeNode,
+  SortOption,
+  useTreeContext,
+} from '@/components/ui/sortable-tree'
 import {
   Plus,
   Store,
@@ -20,12 +26,19 @@ import {
   X,
   Copy,
   Check,
+  Upload,
+  FileDown,
+  AlertCircle,
+  CheckCircle,
+  GripVertical,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Papa from 'papaparse'
 
 interface Shop {
   id: string
   name: string
+  shopNumber: string | null
   address: string | null
   qrCode: string
   status: 'ACTIVE' | 'INACTIVE'
@@ -40,38 +53,32 @@ interface Shop {
   } | null
 }
 
-interface TreeNode extends Shop {
-  children: TreeNode[]
-  level: number
-}
-
-function buildTree(shops: Shop[]): TreeNode[] {
-  const shopMap = new Map<string, TreeNode>()
-  const roots: TreeNode[] = []
-
-  shops.forEach((shop) => {
-    shopMap.set(shop.id, { ...shop, children: [], level: 0 })
-  })
-
-  shops.forEach((shop) => {
-    const node = shopMap.get(shop.id)!
-    if (shop.parentId && shopMap.has(shop.parentId)) {
-      const parent = shopMap.get(shop.parentId)!
-      node.level = parent.level + 1
-      parent.children.push(node)
-    } else {
-      roots.push(node)
-    }
-  })
-
-  const sortNodes = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => a.name.localeCompare(b.name))
-    nodes.forEach((node) => sortNodes(node.children))
-  }
-  sortNodes(roots)
-
-  return roots
-}
+// Sort options for shops
+const shopSortOptions: SortOption<Shop>[] = [
+  {
+    label: '名前順',
+    value: 'name',
+    compareFn: (a, b) => a.name.localeCompare(b.name),
+  },
+  {
+    label: '店舗番号順',
+    value: 'shopNumber',
+    compareFn: (a, b) => {
+      const aNum = a.shopNumber || ''
+      const bNum = b.shopNumber || ''
+      return aNum.localeCompare(bNum)
+    },
+  },
+  {
+    label: '回答数順',
+    value: 'responses',
+    compareFn: (a, b) => {
+      const aCount = a._count?.responses || 0
+      const bCount = b._count?.responses || 0
+      return bCount - aCount // Descending
+    },
+  },
+]
 
 function QRPreviewModal({
   shop,
@@ -188,117 +195,367 @@ function QRPreviewModal({
   )
 }
 
-function ShopTreeItem({
-  shop,
-  expandedIds,
-  toggleExpand,
-  selectedIds,
-  toggleSelect,
-  onShowQR,
+interface ImportError {
+  row: number
+  message: string
+}
+
+interface ImportResult {
+  created: number
+  errors: ImportError[]
+  total: number
+}
+
+interface CSVPreviewRow {
+  shop_number: string
+  name: string
+  parent_name: string
+  address: string
+}
+
+function CSVImportModal({
+  onClose,
+  onSuccess,
 }: {
-  shop: TreeNode
-  expandedIds: Set<string>
-  toggleExpand: (id: string) => void
-  selectedIds: Set<string>
-  toggleSelect: (id: string) => void
-  onShowQR: (shop: Shop) => void
+  onClose: () => void
+  onSuccess: () => void
 }) {
-  const hasChildren = shop.children.length > 0
-  const isExpanded = expandedIds.has(shop.id)
-  const isSelected = selectedIds.has(shop.id)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<CSVPreviewRow[]>([])
+  const [importing, setImporting] = useState(false)
+  const [result, setResult] = useState<ImportResult | null>(null)
+  const [error, setError] = useState('')
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    if (!selectedFile) return
+
+    setFile(selectedFile)
+    setError('')
+    setResult(null)
+
+    Papa.parse<CSVPreviewRow>(selectedFile, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim().toLowerCase().replace(/\s+/g, '_'),
+      preview: 5,
+      complete: (results) => {
+        setPreview(results.data)
+      },
+      error: () => {
+        setError('CSVファイルの読み込みに失敗しました')
+      },
+    })
+  }
+
+  const handleImport = async () => {
+    if (!file) return
+
+    setImporting(true)
+    setError('')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/shops/import', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'インポートに失敗しました')
+      }
+
+      setResult(data)
+
+      if (data.created > 0) {
+        onSuccess()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'インポートに失敗しました')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleReset = () => {
+    setFile(null)
+    setPreview([])
+    setResult(null)
+    setError('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   return (
-    <div>
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
       <div
-        className={cn(
-          'flex items-center gap-2 py-2 px-3 rounded-md hover:bg-slate-100 transition-colors',
-          shop.status === 'INACTIVE' && 'opacity-60',
-          isSelected && 'bg-slate-100'
-        )}
-        style={{ paddingLeft: `${shop.level * 24 + 12}px` }}
+        className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
       >
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => toggleSelect(shop.id)}
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-        />
-
-        {hasChildren ? (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-lg">CSVインポート</h3>
           <button
-            onClick={() => toggleExpand(shop.id)}
-            className="p-0.5 hover:bg-slate-200 rounded"
+            onClick={onClose}
+            className="p-1 hover:bg-slate-100 rounded-full"
           >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-slate-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-slate-500" />
-            )}
+            <X className="h-5 w-5" />
           </button>
-        ) : (
-          <span className="w-5" />
-        )}
-
-        {hasChildren ? (
-          <FolderOpen className="h-4 w-4 text-amber-500" />
-        ) : (
-          <Store className="h-4 w-4 text-slate-500" />
-        )}
-
-        <Link
-          href={`/shops/${shop.id}`}
-          className="flex-1 flex items-center gap-3 min-w-0"
-        >
-          <span className="font-medium text-slate-900 truncate hover:text-primary">
-            {shop.name}
-          </span>
-          {shop.address && (
-            <span className="hidden sm:flex items-center gap-1 text-xs text-slate-500 truncate">
-              <MapPin className="h-3 w-3" />
-              {shop.address}
-            </span>
-          )}
-        </Link>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              onShowQR(shop)
-            }}
-            className="p-1.5 hover:bg-slate-200 rounded"
-            title="Show QR Code"
-          >
-            <QrCode className="h-4 w-4 text-slate-500" />
-          </button>
-          <Badge
-            variant={shop.status === 'ACTIVE' ? 'default' : 'secondary'}
-            className="text-xs"
-          >
-            {shop.status}
-          </Badge>
-          <span className="flex items-center gap-1 text-xs text-slate-500 min-w-[60px]">
-            <MessageSquare className="h-3 w-3" />
-            {shop._count.responses}
-          </span>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
+        {result ? (
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                {result.created > 0 ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-yellow-500" />
+                )}
+                <span className="font-medium">
+                  {result.created} / {result.total} 店舗をインポートしました
+                </span>
+              </div>
+            </div>
+
+            {result.errors.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-slate-50 px-4 py-2 font-medium text-sm border-b">
+                  エラー ({result.errors.length}件)
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 sticky top-0">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">行</th>
+                        <th className="text-left px-4 py-2 font-medium">エラー</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {result.errors.map((err, i) => (
+                        <tr key={i}>
+                          <td className="px-4 py-2">{err.row}</td>
+                          <td className="px-4 py-2 text-red-600">{err.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleReset}>
+                別のファイルをインポート
+              </Button>
+              <Button onClick={onClose}>閉じる</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="hidden"
+                id="csv-file-input"
+              />
+              {file ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <Upload className="h-4 w-4" />
+                    <span className="font-medium">{file.name}</span>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleReset}>
+                    ファイルを変更
+                  </Button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="csv-file-input"
+                  className="cursor-pointer space-y-2"
+                >
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    CSVファイルをクリックして選択
+                  </p>
+                </label>
+              )}
+            </div>
+
+            {preview.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-slate-50 px-4 py-2 font-medium text-sm border-b">
+                  プレビュー (最初の5行)
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">店舗番号</th>
+                        <th className="text-left px-4 py-2 font-medium">店舗名</th>
+                        <th className="text-left px-4 py-2 font-medium">親店舗</th>
+                        <th className="text-left px-4 py-2 font-medium">住所</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {preview.map((row, i) => (
+                        <tr key={i}>
+                          <td className="px-4 py-2">{row.shop_number || '-'}</td>
+                          <td className="px-4 py-2">{row.name || '-'}</td>
+                          <td className="px-4 py-2">{row.parent_name || '-'}</td>
+                          <td className="px-4 py-2">{row.address || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2">
+              <a
+                href="/templates/shops-template.csv"
+                download
+                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+              >
+                <FileDown className="h-4 w-4" />
+                テンプレートをダウンロード
+              </a>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose}>
+                  キャンセル
+                </Button>
+                <Button onClick={handleImport} disabled={!file || importing}>
+                  {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  インポート
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Custom Shop Tree Item Renderer
+function ShopTreeItemContent({
+  node,
+  dragHandleProps,
+  onShowQR,
+}: {
+  node: TreeNode<Shop>
+  dragHandleProps: object
+  onShowQR: (shop: Shop) => void
+}) {
+  const { expandedIds, selectedIds, toggleExpand, toggleSelect, searchQuery } =
+    useTreeContext()
+
+  const hasChildren = node.children.length > 0
+  const isExpanded = expandedIds.has(node.id) || !!searchQuery
+  const isSelected = selectedIds.has(node.id)
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 py-2 px-3 rounded-md hover:bg-slate-100 transition-colors',
+        node.status === 'INACTIVE' && 'opacity-60',
+        isSelected && 'bg-slate-100'
+      )}
+      style={{ paddingLeft: `${node.level * 24 + 12}px` }}
+    >
+      <div {...dragHandleProps}>
+        <GripVertical className="h-4 w-4 text-slate-400" />
       </div>
 
-      {hasChildren && isExpanded && (
-        <div>
-          {shop.children.map((child) => (
-            <ShopTreeItem
-              key={child.id}
-              shop={child}
-              expandedIds={expandedIds}
-              toggleExpand={toggleExpand}
-              selectedIds={selectedIds}
-              toggleSelect={toggleSelect}
-              onShowQR={onShowQR}
-            />
-          ))}
-        </div>
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onChange={() => toggleSelect(node.id)}
+        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+      />
+
+      {hasChildren ? (
+        <button
+          onClick={() => toggleExpand(node.id)}
+          className="p-0.5 hover:bg-slate-200 rounded"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-slate-500" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-slate-500" />
+          )}
+        </button>
+      ) : (
+        <span className="w-5" />
       )}
+
+      {hasChildren ? (
+        <FolderOpen className="h-4 w-4 text-amber-500" />
+      ) : (
+        <Store className="h-4 w-4 text-slate-500" />
+      )}
+
+      <Link
+        href={`/shops/${node.id}`}
+        className="flex-1 flex items-center gap-3 min-w-0"
+      >
+        {node.shopNumber && (
+          <span className="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+            {node.shopNumber}
+          </span>
+        )}
+        <span className="font-medium text-slate-900 truncate hover:text-primary">
+          {node.name}
+        </span>
+        {node.address && (
+          <span className="hidden sm:flex items-center gap-1 text-xs text-slate-500 truncate">
+            <MapPin className="h-3 w-3" />
+            {node.address}
+          </span>
+        )}
+      </Link>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            onShowQR(node)
+          }}
+          className="p-1.5 hover:bg-slate-200 rounded"
+          title="Show QR Code"
+        >
+          <QrCode className="h-4 w-4 text-slate-500" />
+        </button>
+        <Badge
+          variant={node.status === 'ACTIVE' ? 'default' : 'secondary'}
+          className="text-xs"
+        >
+          {node.status}
+        </Badge>
+        <span className="flex items-center gap-1 text-xs text-slate-500 min-w-[60px]">
+          <MessageSquare className="h-3 w-3" />
+          {node._count.responses}
+        </span>
+      </div>
     </div>
   )
 }
@@ -307,10 +564,10 @@ export default function ShopsPage() {
   const [shops, setShops] = useState<Shop[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [previewShop, setPreviewShop] = useState<Shop | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   useEffect(() => {
     fetchShops()
@@ -324,11 +581,6 @@ export default function ShopsPage() {
       }
       const data = await response.json()
       setShops(data)
-
-      const parentsWithChildren = data
-        .filter((s: Shop) => s._count.children > 0)
-        .map((s: Shop) => s.id)
-      setExpandedIds(new Set(parentsWithChildren))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -336,29 +588,34 @@ export default function ShopsPage() {
     }
   }
 
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
+  const handleReorder = useCallback(
+    async (itemId: string, newParentId: string | null, newIndex: number) => {
+      // Optimistically update the UI
+      const item = shops.find((s) => s.id === itemId)
+      if (!item) return
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
+      // Update parent on the server
+      try {
+        const response = await fetch(`/api/shops/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parentId: newParentId }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to update shop')
+        }
+
+        // Refresh shops to get the updated tree
+        fetchShops()
+      } catch (err) {
+        console.error('Failed to reorder:', err)
+        // Refresh to restore original state
+        fetchShops()
       }
-      return next
-    })
-  }
+    },
+    [shops]
+  )
 
   const selectAll = () => {
     if (selectedIds.size === shops.length) {
@@ -384,13 +641,11 @@ export default function ShopsPage() {
 
       for (const shop of selectedShops) {
         const surveyUrl = `${appUrl}/survey/${shop.qrCode}`
-        // Use toDataURL (browser-compatible) instead of toBuffer
         const dataUrl = await QRCode.toDataURL(surveyUrl, {
           width: 400,
           margin: 2,
           errorCorrectionLevel: 'M',
         })
-        // Convert data URL to blob
         const base64Data = dataUrl.split(',')[1]
         const filename = `${shop.name.replace(/[^a-zA-Z0-9-_]/g, '_')}-qr.png`
         zip.file(filename, base64Data, { base64: true })
@@ -411,7 +666,39 @@ export default function ShopsPage() {
     window.open(`/shops/bulk-print?ids=${ids}`, '_blank')
   }
 
-  const tree = buildTree(shops)
+  const handleExportCSV = useCallback(() => {
+    if (shops.length === 0) return
+
+    const shopIdToName = new Map<string, string>()
+    shops.forEach((shop) => shopIdToName.set(shop.id, shop.name))
+
+    const csvData = shops.map((shop) => ({
+      shop_number: shop.shopNumber || '',
+      name: shop.name,
+      parent_name: shop.parentId ? shopIdToName.get(shop.parentId) || '' : '',
+      address: shop.address || '',
+    }))
+
+    const csv = Papa.unparse(csvData)
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'shops-export.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }, [shops])
+
+  const renderShopItem = useCallback(
+    (node: TreeNode<Shop>, dragHandleProps: object) => (
+      <ShopTreeItemContent
+        node={node}
+        dragHandleProps={dragHandleProps}
+        onShowQR={setPreviewShop}
+      />
+    ),
+    []
+  )
 
   const totalShops = shops.length
   const activeShops = shops.filter((s) => s.status === 'ACTIVE').length
@@ -426,12 +713,22 @@ export default function ShopsPage() {
             Manage your shop locations and view survey responses
           </p>
         </div>
-        <Link href="/shops/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Shop
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowImportModal(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            CSVインポート
           </Button>
-        </Link>
+          <Button variant="outline" onClick={handleExportCSV}>
+            <FileDown className="mr-2 h-4 w-4" />
+            エクスポート
+          </Button>
+          <Link href="/shops/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Shop
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-6">
@@ -525,19 +822,20 @@ export default function ShopsPage() {
                   Select all shops
                 </span>
               </div>
-              <div className="space-y-1">
-                {tree.map((shop) => (
-                  <ShopTreeItem
-                    key={shop.id}
-                    shop={shop}
-                    expandedIds={expandedIds}
-                    toggleExpand={toggleExpand}
-                    selectedIds={selectedIds}
-                    toggleSelect={toggleSelect}
-                    onShowQR={setPreviewShop}
-                  />
-                ))}
-              </div>
+              <SortableTree
+                items={shops}
+                sortOptions={shopSortOptions}
+                defaultSortValue="name"
+                enableSearch={true}
+                enableSort={true}
+                enableDragDrop={true}
+                enableSelection={true}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                onReorder={handleReorder}
+                renderItem={renderShopItem}
+                emptyMessage="店舗がありません"
+              />
             </>
           )}
         </CardContent>
@@ -547,6 +845,15 @@ export default function ShopsPage() {
         <QRPreviewModal
           shop={previewShop}
           onClose={() => setPreviewShop(null)}
+        />
+      )}
+
+      {showImportModal && (
+        <CSVImportModal
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => {
+            fetchShops()
+          }}
         />
       )}
     </div>
