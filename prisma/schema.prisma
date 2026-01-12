@@ -1,0 +1,208 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum CompanyStatus {
+  ONBOARDING
+  ACTIVE
+  INACTIVE
+}
+
+enum AdminStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+enum ShopStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum Industry {
+  RESTAURANT
+  HOTEL
+  RETAIL
+  ENTERTAINMENT
+  OTHER
+}
+
+enum QuestionCategory {
+  MANAGER_LEADERSHIP       // 店長・リーダー (Q1, Q2)
+  SCHEDULE_HOURS           // シフト・時間 (Q3)
+  TEAMWORK                 // チームワーク (Q4)
+  WORKLOAD_STAFFING        // 忙しさ・負担 (Q5 - reverse scored)
+  RESPECT_RECOGNITION      // 尊重・承認 (Q6)
+  PAY_BENEFITS             // 給与・待遇 (Q7)
+  WORK_ENVIRONMENT         // 職場環境 (Q8)
+  RETENTION_INTENT         // 定着意向 (Q9)
+  ENPS                     // eNPS (Q10 - 0-10 scale)
+  FREE_TEXT                // 自由記述 (Q11)
+}
+
+enum QuestionType {
+  SCALE_5                  // 1-5 scale questions
+  SCALE_11                 // 0-10 scale for eNPS
+  FREE_TEXT                // Open-ended text
+}
+
+// ============================================
+// SYSTEM ADMIN (Platform Level)
+// ============================================
+
+model SysAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("sys_admins")
+}
+
+// ============================================
+// COMPANY
+// ============================================
+
+model Company {
+  id        String        @id @default(cuid())
+  name      String
+  industry  Industry
+  status    CompanyStatus @default(ONBOARDING)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  shops  Shop[]
+  admins Admin[]
+
+  @@map("companies")
+}
+
+// ============================================
+// SHOP (Hierarchical)
+// ============================================
+
+model Shop {
+  id        String     @id @default(cuid())
+  companyId String     @map("company_id")
+  parentId  String?    @map("parent_id")
+  name      String
+  address   String?
+  qrCode    String     @unique @map("qr_code")
+  status    ShopStatus @default(ACTIVE)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  company          Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent           Shop?                 @relation("ShopHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children         Shop[]                @relation("ShopHierarchy")
+  responses        Response[]
+  adminAssignments AdminShopAssignment[]
+
+  @@index([companyId])
+  @@index([parentId])
+  @@map("shops")
+}
+
+// ============================================
+// ADMIN (Company Level)
+// ============================================
+
+model Admin {
+  id           String      @id @default(cuid())
+  companyId    String      @map("company_id")
+  email        String      @unique
+  passwordHash String?     @map("password_hash")
+  name         String
+  isFullAccess Boolean     @default(false) @map("is_full_access")
+  status       AdminStatus @default(PENDING)
+  inviteToken  String?     @unique @map("invite_token")
+  inviteExpiry DateTime?   @map("invite_expiry")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  shopAssignments AdminShopAssignment[]
+
+  @@index([companyId])
+  @@map("admins")
+}
+
+// ============================================
+// ADMIN SHOP ASSIGNMENT
+// ============================================
+
+model AdminShopAssignment {
+  id        String   @id @default(cuid())
+  adminId   String   @map("admin_id")
+  shopId    String   @map("shop_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  shop  Shop  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([adminId, shopId])
+  @@map("admin_shop_assignments")
+}
+
+// ============================================
+// SURVEY QUESTIONS
+// ============================================
+
+model Question {
+  id            String           @id @default(cuid())
+  order         Int              @unique
+  textJa        String           @map("text_ja")
+  textEn        String           @map("text_en")
+  category      QuestionCategory
+  questionType  QuestionType     @default(SCALE_5) @map("question_type")
+  isReverse     Boolean          @default(false) @map("is_reverse")  // For Q5 where high = bad
+
+  @@map("questions")
+}
+
+// ============================================
+// SURVEY RESPONSE
+// ============================================
+
+model Response {
+  id          String   @id @default(cuid())
+  shopId      String   @map("shop_id")
+  answers     Json     // q1-q9: 1-5 scores, q10: 0-10 eNPS score
+  comment     String?  // q11: Free text comment (stored separately for easy retrieval)
+  submittedAt DateTime @default(now()) @map("submitted_at")
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([submittedAt])
+  @@map("responses")
+}
+
+// ============================================
+// INDUSTRY BENCHMARKS
+// ============================================
+
+model Benchmark {
+  id         String           @id @default(cuid())
+  industry   Industry
+  category   QuestionCategory
+  avgScore   Float            @map("avg_score")
+  sampleSize Int              @map("sample_size")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  @@unique([industry, category])
+  @@map("benchmarks")
+}
