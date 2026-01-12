@@ -33,7 +33,7 @@
     "lucide-react": "^0.395.0",
     "mailgun.js": "^10.2.0",
     "nanoid": "^5.1.6",
-    "next": "^14.2.0",
+    "next": "^14.2.35",
     "next-auth": "^5.0.0-beta.19",
     "postcss": "^8.5.6",
     "qrcode": "^1.5.4",
