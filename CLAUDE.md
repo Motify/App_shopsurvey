@@ -11,6 +11,7 @@ ShopSurvey is an employee retention survey system for multi-store businesses (re
 ```bash
 npm run dev          # Start development server on http://localhost:3000
 npm run build        # Build for production
+npm run start        # Start production server
 npm run lint         # Run ESLint
 npm run db:generate  # Regenerate Prisma client after schema changes
 npm run db:migrate   # Create and apply database migrations
@@ -44,6 +45,7 @@ src/
     ├── auth.ts          # NextAuth configuration
     ├── prisma.ts        # Prisma client singleton
     ├── scoring.ts       # Survey scoring algorithms, risk levels, eNPS
+    ├── access.ts        # Shop access control (full vs limited admin access)
     ├── mailgun.ts       # Email service
     └── qrcode.ts        # QR code generation
 ```
@@ -52,8 +54,9 @@ src/
 - **SysAdmin**: Platform-level administrators
 - **Company**: Tenant organization with industry type and status
 - **Shop**: Store locations with optional hierarchical parent/child relationships
-- **Admin**: Company-level users with either full access or specific shop assignments
+- **Admin**: Company-level users with either full access or specific shop assignments (use `src/lib/access.ts` for access checks)
 - **Response**: Survey submissions stored with JSON answers
+- **Question**: Survey questions with Japanese (`textJa`) and English (`textEn`) text
 
 ### Route Groups
 - `(auth)` - Public authentication pages

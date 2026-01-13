@@ -111,6 +111,9 @@ model Shop {
   children         Shop[]                @relation("ShopHierarchy")
   responses        Response[]
   adminAssignments AdminShopAssignment[]
+  surveyInvites    SurveyInvite[]
+  surveyBatches    SurveyBatch[]
+  analyses         ResponseAnalysis[]
 
   @@index([companyId])
   @@index([parentId])
@@ -179,17 +182,40 @@ model Question {
 // ============================================
 
 model Response {
-  id          String   @id @default(cuid())
-  shopId      String   @map("shop_id")
-  answers     Json     // q1-q9: 1-5 scores, q10: 0-10 eNPS score
-  comment     String?  // q11: Free text comment (stored separately for easy retrieval)
-  submittedAt DateTime @default(now()) @map("submitted_at")
+  id              String   @id @default(cuid())
+  shopId          String   @map("shop_id")
+  answers         Json     // q1-q9: 1-5 scores, q10: 0-10 eNPS score
+  comment         String?  // Legacy: Free text comment (kept for backward compatibility)
+  positiveText    String?  @map("positive_text")    // Q11: What makes you want to continue working here?
+  improvementText String?  @map("improvement_text") // Q12: What would you like to see improved?
+  submittedAt     DateTime @default(now()) @map("submitted_at")
 
-  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shop         Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  surveyInvite SurveyInvite?
 
   @@index([shopId])
   @@index([submittedAt])
   @@map("responses")
+}
+
+// ============================================
+// AI RESPONSE ANALYSIS CACHE
+// ============================================
+
+model ResponseAnalysis {
+  id            String   @id @default(cuid())
+  shopId        String   @map("shop_id")
+  startDate     DateTime @map("start_date")
+  endDate       DateTime @map("end_date")
+  responseCount Int      @map("response_count")
+  analysis      Json     // Full analysis result from AI
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, startDate, endDate])
+  @@index([shopId])
+  @@map("response_analyses")
 }
 
 // ============================================
@@ -206,4 +232,46 @@ model Benchmark {
 
   @@unique([industry, category])
   @@map("benchmarks")
+}
+
+// ============================================
+// SURVEY EMAIL DISTRIBUTION
+// ============================================
+
+model SurveyBatch {
+  id        String   @id @default(cuid())
+  shopId    String   @map("shop_id")
+  adminId   String   @map("admin_id")
+  sentAt    DateTime @default(now()) @map("sent_at")
+  totalSent Int      @map("total_sent")
+  method    String   @default("manual") // "csv" or "manual"
+
+  shop    Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  invites SurveyInvite[]
+
+  @@index([shopId])
+  @@index([adminId])
+  @@index([sentAt])
+  @@map("survey_batches")
+}
+
+model SurveyInvite {
+  id          String    @id @default(cuid())
+  batchId     String    @map("batch_id")
+  shopId      String    @map("shop_id")
+  email       String
+  token       String    @unique
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  openedAt    DateTime? @map("opened_at")
+  completedAt DateTime? @map("completed_at")
+  responseId  String?   @unique @map("response_id")
+
+  batch    SurveyBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  shop     Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  response Response?   @relation(fields: [responseId], references: [id])
+
+  @@index([shopId])
+  @@index([batchId])
+  @@index([token])
+  @@map("survey_invites")
 }

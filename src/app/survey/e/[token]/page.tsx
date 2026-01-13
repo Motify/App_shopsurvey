@@ -16,6 +16,7 @@ interface Question {
 }
 
 interface SurveyData {
+  inviteId: string
   shop: {
     id: string
     name: string
@@ -54,17 +55,18 @@ const OPEN_ENDED_QUESTIONS = [
 
 const MAX_TEXT_LENGTH = 500
 
-export default function SurveyPage({
+export default function EmailSurveyPage({
   params,
 }: {
-  params: { qrCode: string }
+  params: { token: string }
 }) {
-  const { qrCode } = params
+  const { token } = params
   const router = useRouter()
 
   const [surveyData, setSurveyData] = useState<SurveyData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [textAnswers, setTextAnswers] = useState<Record<string, string>>({})
   const [positiveText, setPositiveText] = useState('')
@@ -75,19 +77,16 @@ export default function SurveyPage({
 
   useEffect(() => {
     fetchSurvey()
-  }, [qrCode])
+  }, [token])
 
   const fetchSurvey = async () => {
     try {
-      const response = await fetch(`/api/survey/${qrCode}`)
+      const response = await fetch(`/api/survey/email/${token}`)
       const data = await response.json()
 
       if (!response.ok) {
-        if (data.code === 'NOT_FOUND' || data.code === 'INACTIVE') {
-          setError('このアンケートは無効です')
-        } else {
-          setError('エラーが発生しました')
-        }
+        setError(data.error || 'エラーが発生しました')
+        setErrorCode(data.code || null)
         return
       }
 
@@ -154,7 +153,7 @@ export default function SurveyPage({
         }
       })
 
-      // Get the legacy free text comment (Q11) if it exists
+      // Get the free text comment (Q11)
       const freeTextQuestion = surveyData.questions.find(
         (q) => q.questionType === 'FREE_TEXT'
       )
@@ -170,6 +169,7 @@ export default function SurveyPage({
           positiveText: positiveText.trim() || null,
           improvementText: improvementText.trim() || null,
           timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
+          inviteToken: token, // Pass the invite token to link the response
         }),
       })
 
@@ -177,7 +177,7 @@ export default function SurveyPage({
         throw new Error('Failed to submit')
       }
 
-      router.push(`/survey/${qrCode}/thanks`)
+      router.push(`/survey/e/${token}/thanks`)
     } catch (err) {
       console.error('Failed to submit survey:', err)
       setError('送信に失敗しました。もう一度お試しください。')
@@ -199,9 +199,16 @@ export default function SurveyPage({
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
           <h1 className="text-xl font-bold text-slate-900 mb-2">{error}</h1>
-          <p className="text-slate-500 text-sm">
-            QRコードを再度スキャンするか、管理者にお問い合わせください
-          </p>
+          {errorCode === 'ALREADY_COMPLETED' ? (
+            <p className="text-slate-500 text-sm">
+              このアンケートはすでに回答済みです。<br />
+              ご協力ありがとうございました。
+            </p>
+          ) : (
+            <p className="text-slate-500 text-sm">
+              リンクが無効です。送信者にお問い合わせください。
+            </p>
+          )}
         </div>
       </div>
     )

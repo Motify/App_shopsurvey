@@ -235,3 +235,160 @@ ShopSurvey - Employee Retention Survey System
     html,
   })
 }
+
+export async function sendSurveyInviteJa(
+  email: string,
+  token: string
+) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const surveyUrl = `${appUrl}/survey/e/${token}`
+
+  const subject = 'アンケートへのご協力のお願い'
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Meiryo', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background-color: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            お忙しいところ恐れ入ります。
+          </p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。<br>
+            所要時間は約2分です。
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${surveyUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">
+              アンケートに回答する
+            </a>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 6px; padding: 16px; margin-top: 32px;">
+            <p style="color: #666; font-size: 13px; line-height: 22px; margin: 0;">
+              ※このリンクはあなた専用です。他の方への転送はご遠慮ください。<br>
+              ※回答は匿名で処理され、個人が特定されることはありません。
+            </p>
+          </div>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 32px 0 0 0;">
+            ご協力ありがとうございます。
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 24px;">
+          <p style="color: #888; font-size: 12px; margin: 0;">ShopSurvey - 従業員エンゲージメント調査システム</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  const text = `アンケートへのご協力のお願い
+
+お忙しいところ恐れ入ります。
+
+職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。
+所要時間は約2分です。
+
+▼ アンケートに回答する
+${surveyUrl}
+
+※このリンクはあなた専用です。他の方への転送はご遠慮ください。
+※回答は匿名で処理され、個人が特定されることはありません。
+
+ご協力ありがとうございます。
+
+---
+ShopSurvey - 従業員エンゲージメント調査システム`
+
+  return sendEmail({
+    to: email,
+    subject,
+    text,
+    html,
+  })
+}
+
+export async function sendSurveyReminderJa(
+  email: string,
+  token: string
+) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const surveyUrl = `${appUrl}/survey/e/${token}`
+
+  const subject = '【リマインド】アンケートへのご協力のお願い'
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Meiryo', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background-color: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            お忙しいところ恐れ入ります。
+          </p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            先日お送りしたアンケートのリマインドです。<br>
+            まだご回答いただいていない方は、ぜひご協力をお願いいたします。
+          </p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。<br>
+            所要時間は約2分です。
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${surveyUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">
+              アンケートに回答する
+            </a>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 6px; padding: 16px; margin-top: 32px;">
+            <p style="color: #666; font-size: 13px; line-height: 22px; margin: 0;">
+              ※このリンクはあなた専用です。他の方への転送はご遠慮ください。<br>
+              ※回答は匿名で処理され、個人が特定されることはありません。
+            </p>
+          </div>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 32px 0 0 0;">
+            ご協力ありがとうございます。
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 24px;">
+          <p style="color: #888; font-size: 12px; margin: 0;">ShopSurvey - 従業員エンゲージメント調査システム</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  const text = `【リマインド】アンケートへのご協力のお願い
+
+お忙しいところ恐れ入ります。
+
+先日お送りしたアンケートのリマインドです。
+まだご回答いただいていない方は、ぜひご協力をお願いいたします。
+
+職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。
+所要時間は約2分です。
+
+▼ アンケートに回答する
+${surveyUrl}
+
+※このリンクはあなた専用です。他の方への転送はご遠慮ください。
+※回答は匿名で処理され、個人が特定されることはありません。
+
+ご協力ありがとうございます。
+
+---
+ShopSurvey - 従業員エンゲージメント調査システム`
+
+  return sendEmail({
+    to: email,
+    subject,
+    text,
+    html,
+  })
+}

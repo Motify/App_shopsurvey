@@ -21,8 +21,11 @@ const answerSchema = z.object({
 const submitResponseSchema = z.object({
   shopId: z.string().min(1, 'Shop ID is required'),
   answers: answerSchema,
-  comment: z.string().nullable().optional(), // Q11: Free text (optional)
+  comment: z.string().nullable().optional(), // Legacy: Free text (optional)
+  positiveText: z.string().max(500).nullable().optional(), // Q11: What makes you want to continue working here?
+  improvementText: z.string().max(500).nullable().optional(), // Q12: What would you like to see improved?
   timeSpentSeconds: z.number().int().optional(),
+  inviteToken: z.string().optional(), // For email survey submissions
 })
 
 // POST /api/responses - Submit survey response (public)
@@ -38,7 +41,37 @@ export async function POST(request: Request) {
       )
     }
 
-    const { shopId, answers, comment, timeSpentSeconds } = validation.data
+    const { shopId, answers, comment, positiveText, improvementText, timeSpentSeconds, inviteToken } = validation.data
+
+    // If inviteToken provided, validate the survey invite
+    let surveyInvite = null
+    if (inviteToken) {
+      surveyInvite = await prisma.surveyInvite.findUnique({
+        where: { token: inviteToken },
+      })
+
+      if (!surveyInvite) {
+        return NextResponse.json(
+          { error: 'Invalid survey invite' },
+          { status: 400 }
+        )
+      }
+
+      if (surveyInvite.completedAt) {
+        return NextResponse.json(
+          { error: 'Survey already completed' },
+          { status: 400 }
+        )
+      }
+
+      // Verify the shop matches the invite
+      if (surveyInvite.shopId !== shopId) {
+        return NextResponse.json(
+          { error: 'Shop mismatch' },
+          { status: 400 }
+        )
+      }
+    }
 
     // Verify shop exists and is active
     const shop = await prisma.shop.findUnique({
@@ -65,9 +98,22 @@ export async function POST(request: Request) {
           ...answers,
           ...(timeSpentSeconds !== undefined && { timeSpentSeconds }),
         },
-        comment: comment || null, // Store comment separately
+        comment: comment || null, // Legacy: Store comment separately
+        positiveText: positiveText || null, // Q11: What makes you want to continue working here?
+        improvementText: improvementText || null, // Q12: What would you like to see improved?
       },
     })
+
+    // If this was an email survey, update the invite with response link
+    if (surveyInvite) {
+      await prisma.surveyInvite.update({
+        where: { id: surveyInvite.id },
+        data: {
+          responseId: response.id,
+          completedAt: new Date(),
+        },
+      })
+    }
 
     return NextResponse.json(
       { success: true, responseId: response.id },

@@ -22,6 +22,7 @@ export function AdminSidebar({ user, companyName, isFullAccess }: AdminSidebarPr
   const navigation = [
     { name: 'ダッシュボード', href: '/dashboard', icon: LayoutDashboard, show: true },
     { name: '店舗管理', href: '/shops', icon: Store, show: true },
+    { name: 'アンケート配布', href: '/survey', icon: Send, show: true },
     { name: '管理者', href: '/admins', icon: Users, show: isFullAccess },
     { name: 'レポート', href: '/reports', icon: BarChart3, show: true },
     { name: '全社レポート', href: '/reports/company', icon: Building2, show: isFullAccess },
