@@ -21,9 +21,7 @@ const answerSchema = z.object({
 const submitResponseSchema = z.object({
   shopId: z.string().min(1, 'Shop ID is required'),
   answers: answerSchema,
-  comment: z.string().nullable().optional(), // Legacy: Free text (optional)
-  positiveText: z.string().max(500).nullable().optional(), // Q11: What makes you want to continue working here?
-  improvementText: z.string().max(500).nullable().optional(), // Q12: What would you like to see improved?
+  comment: z.string().max(500).nullable().optional(), // Free text comment (optional)
   timeSpentSeconds: z.number().int().optional(),
   inviteToken: z.string().optional(), // For email survey submissions
 })
@@ -41,7 +39,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { shopId, answers, comment, positiveText, improvementText, timeSpentSeconds, inviteToken } = validation.data
+    const { shopId, answers, comment, timeSpentSeconds, inviteToken } = validation.data
 
     // If inviteToken provided, validate the survey invite
     let surveyInvite = null
@@ -98,9 +96,7 @@ export async function POST(request: Request) {
           ...answers,
           ...(timeSpentSeconds !== undefined && { timeSpentSeconds }),
         },
-        comment: comment || null, // Legacy: Store comment separately
-        positiveText: positiveText || null, // Q11: What makes you want to continue working here?
-        improvementText: improvementText || null, // Q12: What would you like to see improved?
+        comment: comment || null, // Free text comment
       },
     })
 

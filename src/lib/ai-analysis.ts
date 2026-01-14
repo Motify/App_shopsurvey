@@ -1,7 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 })
 
 export interface ThemeResult {
@@ -21,83 +21,98 @@ export interface AnalysisResult {
   improvementThemes: ImprovementTheme[]
   summary: string
   summaryEn: string
+  positiveCount: number
+  negativeCount: number
+  neutralCount: number
 }
 
 export async function analyzeResponses(
-  positiveTexts: string[],
-  improvementTexts: string[]
+  comments: string[]
 ): Promise<AnalysisResult> {
-  const filteredPositive = positiveTexts.filter(t => t?.trim())
-  const filteredImprovement = improvementTexts.filter(t => t?.trim())
+  const filteredComments = comments.filter(t => t?.trim())
 
   // If no text responses, return empty analysis
-  if (filteredPositive.length === 0 && filteredImprovement.length === 0) {
+  if (filteredComments.length === 0) {
     return {
       positiveThemes: [],
       improvementThemes: [],
       summary: 'テキスト回答がありませんでした。',
       summaryEn: 'No text responses were provided.',
+      positiveCount: 0,
+      negativeCount: 0,
+      neutralCount: 0,
     }
   }
 
-  const prompt = `You are analyzing employee survey responses for a shop/retail business in Japan.
+  const prompt = `You are analyzing employee survey comments for a shop/retail business in Japan.
 
-## Positive Feedback (働き続けたい理由):
-${filteredPositive.length > 0 ? filteredPositive.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(No responses)'}
+## Employee Comments:
+${filteredComments.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
-## Improvement Requests (改善してほしいこと):
-${filteredImprovement.length > 0 ? filteredImprovement.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(No responses)'}
+First, classify each comment as:
+- POSITIVE: Expresses satisfaction, appreciation, or what they like about working here
+- NEGATIVE/IMPROVEMENT: Expresses concerns, complaints, requests for change, or areas needing improvement
+- NEUTRAL: Neither clearly positive nor negative, or just acknowledgments like "特にありません" (nothing in particular)
 
-Analyze these responses and return a JSON object with:
+Then analyze and return a JSON object with:
 
-1. "positiveThemes": Top 5 themes from positive feedback (or fewer if not enough responses)
+1. "positiveThemes": Top 5 themes from POSITIVE comments (or fewer if not enough)
    - theme: Theme name in Japanese
    - themeEn: Theme name in English
-   - count: How many responses mention this
-   - percentage: Percentage of total positive responses (rounded to integer)
-   - examples: 2-3 representative quotes (anonymized, keep original Japanese)
+   - count: How many comments mention this
+   - percentage: Percentage of total positive comments (rounded to integer)
+   - examples: 2-3 representative quotes (keep original Japanese)
 
-2. "improvementThemes": Top 5 themes from improvement requests (or fewer if not enough responses)
+2. "improvementThemes": Top 5 themes from NEGATIVE/IMPROVEMENT comments (or fewer if not enough)
    - theme: Theme name in Japanese
    - themeEn: Theme name in English
-   - count: How many responses mention this
-   - percentage: Percentage of total improvement responses (rounded to integer)
-   - examples: 2-3 representative quotes (anonymized, keep original Japanese)
+   - count: How many comments mention this
+   - percentage: Percentage of total negative comments (rounded to integer)
+   - examples: 2-3 representative quotes (keep original Japanese)
    - suggestedAction: One concrete action to address this (in Japanese)
 
 3. "summary": 2-3 sentence summary in Japanese highlighting key findings
 4. "summaryEn": Same summary in English
+5. "positiveCount": Total number of comments classified as positive
+6. "negativeCount": Total number of comments classified as negative/improvement
+7. "neutralCount": Total number of comments classified as neutral
 
 Focus on actionable, specific themes relevant to shop/retail work environments.
 Group similar feedback together. Ignore very generic or unclear responses.
-If a category has no responses, return an empty array for that category.
+If a category has no comments, return an empty array for that category.
 
 Return ONLY valid JSON, no other text or markdown formatting.`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
     messages: [{ role: 'user', content: prompt }],
+    max_tokens: 2000,
+    temperature: 0.3,
   })
 
-  const content = response.content[0]
-  if (content.type !== 'text') {
-    throw new Error('Unexpected response type from AI')
+  const content = response.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('No response from OpenAI')
   }
 
   // Parse and validate the JSON response
   try {
-    const result = JSON.parse(content.text) as AnalysisResult
+    // Remove markdown code blocks if present
+    const cleanedContent = content.replace(/```json\n?|\n?```/g, '').trim()
+    const result = JSON.parse(cleanedContent) as AnalysisResult
 
     // Ensure arrays exist
     result.positiveThemes = result.positiveThemes || []
     result.improvementThemes = result.improvementThemes || []
     result.summary = result.summary || ''
     result.summaryEn = result.summaryEn || ''
+    result.positiveCount = result.positiveCount || 0
+    result.negativeCount = result.negativeCount || 0
+    result.neutralCount = result.neutralCount || 0
 
     return result
   } catch (parseError) {
-    console.error('Failed to parse AI response:', content.text)
+    console.error('Failed to parse AI response:', content)
     throw new Error('Failed to parse AI analysis response')
   }
 }

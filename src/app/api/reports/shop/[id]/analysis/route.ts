@@ -86,10 +86,7 @@ export async function GET(
         const currentResponseCount = await prisma.response.count({
           where: {
             shopId: { in: shopIds },
-            OR: [
-              { positiveText: { not: null } },
-              { improvementText: { not: null } },
-            ],
+            comment: { not: null },
             ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
           },
         })
@@ -107,41 +104,35 @@ export async function GET(
       }
     }
 
-    // Fetch responses with text
+    // Fetch responses with comments
     const responses = await prisma.response.findMany({
       where: {
         shopId: { in: shopIds },
-        OR: [
-          { positiveText: { not: null } },
-          { improvementText: { not: null } },
-        ],
+        comment: { not: null },
         ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
       },
       select: {
-        positiveText: true,
-        improvementText: true,
+        comment: true,
       },
     })
 
+    // Extract comments
+    const comments = responses
+      .map(r => r.comment)
+      .filter((t): t is string => t !== null && t.trim().length > 0)
+
     // Need minimum responses for meaningful analysis
-    if (responses.length < 5) {
+    if (comments.length < 5) {
       return NextResponse.json({
         error: 'Not enough responses',
-        message: '分析には最低5件のテキスト回答が必要です',
-        responseCount: responses.length,
+        message: '分析には最低5件のコメントが必要です',
+        responseCount: comments.length,
         minRequired: 5,
       }, { status: 400 })
     }
 
-    const positiveTexts = responses
-      .map(r => r.positiveText)
-      .filter((t): t is string => t !== null && t.trim().length > 0)
-    const improvementTexts = responses
-      .map(r => r.improvementText)
-      .filter((t): t is string => t !== null && t.trim().length > 0)
-
     // Run AI analysis
-    const analysis = await analyzeResponses(positiveTexts, improvementTexts)
+    const analysis = await analyzeResponses(comments)
 
     // Cache the result
     await prisma.responseAnalysis.upsert({
@@ -153,7 +144,7 @@ export async function GET(
         },
       },
       update: {
-        responseCount: responses.length,
+        responseCount: comments.length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         analysis: analysis as any,
         createdAt: new Date(),
@@ -162,7 +153,7 @@ export async function GET(
         shopId,
         startDate,
         endDate,
-        responseCount: responses.length,
+        responseCount: comments.length,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         analysis: analysis as any,
       },
@@ -170,9 +161,7 @@ export async function GET(
 
     return NextResponse.json({
       ...analysis,
-      responseCount: responses.length,
-      positiveCount: positiveTexts.length,
-      improvementCount: improvementTexts.length,
+      responseCount: comments.length,
       cached: false,
     })
   } catch (error) {

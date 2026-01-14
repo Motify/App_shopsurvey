@@ -37,23 +37,6 @@ const SCALE_5_OPTIONS = [
 // Q10: eNPS 0-10 scale
 const NPS_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-// Open-ended questions (added after Q10)
-const OPEN_ENDED_QUESTIONS = [
-  {
-    id: 'positive',
-    textJa: 'この職場で働き続けたいと思う理由は何ですか？',
-    textEn: 'What makes you want to continue working here?',
-    placeholder: '例：チームの雰囲気が良い、成長できる環境がある など',
-  },
-  {
-    id: 'improvement',
-    textJa: '改善してほしいことがあれば教えてください',
-    textEn: 'What would you like to see improved?',
-    placeholder: '例：シフトの柔軟性、コミュニケーションの改善 など',
-  },
-]
-
-const MAX_TEXT_LENGTH = 500
 
 export default function EmailSurveyPage({
   params,
@@ -69,8 +52,6 @@ export default function EmailSurveyPage({
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [textAnswers, setTextAnswers] = useState<Record<string, string>>({})
-  const [positiveText, setPositiveText] = useState('')
-  const [improvementText, setImprovementText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showValidation, setShowValidation] = useState(false)
   const [startTime] = useState(Date.now())
@@ -166,8 +147,6 @@ export default function EmailSurveyPage({
           shopId: surveyData.shop.id,
           answers: formattedAnswers,
           comment: comment?.trim() || null,
-          positiveText: positiveText.trim() || null,
-          improvementText: improvementText.trim() || null,
           timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
           inviteToken: token, // Pass the invite token to link the response
         }),
@@ -391,61 +370,6 @@ export default function EmailSurveyPage({
             </div>
           )
         })}
-
-        {/* Open-ended Questions Q11 & Q12 */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-          <div className="flex items-start gap-3 mb-4">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-slate-100 text-slate-500">
-              11
-            </span>
-            <div className="flex-1">
-              <p className="text-slate-900 font-medium leading-relaxed">
-                {OPEN_ENDED_QUESTIONS[0].textJa}
-                <span className="text-slate-400 text-sm ml-2">（任意）</span>
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {OPEN_ENDED_QUESTIONS[0].textEn}
-              </p>
-            </div>
-          </div>
-          <textarea
-            value={positiveText}
-            onChange={(e) => setPositiveText(e.target.value.slice(0, MAX_TEXT_LENGTH))}
-            placeholder={OPEN_ENDED_QUESTIONS[0].placeholder}
-            className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
-            rows={4}
-          />
-          <p className="text-xs text-slate-400 text-right mt-1">
-            {positiveText.length} / {MAX_TEXT_LENGTH}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-          <div className="flex items-start gap-3 mb-4">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-slate-100 text-slate-500">
-              12
-            </span>
-            <div className="flex-1">
-              <p className="text-slate-900 font-medium leading-relaxed">
-                {OPEN_ENDED_QUESTIONS[1].textJa}
-                <span className="text-slate-400 text-sm ml-2">（任意）</span>
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {OPEN_ENDED_QUESTIONS[1].textEn}
-              </p>
-            </div>
-          </div>
-          <textarea
-            value={improvementText}
-            onChange={(e) => setImprovementText(e.target.value.slice(0, MAX_TEXT_LENGTH))}
-            placeholder={OPEN_ENDED_QUESTIONS[1].placeholder}
-            className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
-            rows={4}
-          />
-          <p className="text-xs text-slate-400 text-right mt-1">
-            {improvementText.length} / {MAX_TEXT_LENGTH}
-          </p>
-        </div>
 
         {/* Submit button */}
         <div className="pt-4 pb-8">

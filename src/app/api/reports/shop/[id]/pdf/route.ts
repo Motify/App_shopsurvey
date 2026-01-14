@@ -127,7 +127,7 @@ export async function GET(
         shopId: { in: shopIds },
         ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
       },
-      select: { answers: true, comment: true, positiveText: true, improvementText: true, submittedAt: true },
+      select: { answers: true, comment: true, submittedAt: true },
       orderBy: { submittedAt: 'desc' },
     })
 
@@ -268,15 +268,12 @@ export async function GET(
       currentY += 10 + lowCategories.slice(0, 5).length * 6 + 15
     }
 
-    // AI Analysis Section (if text responses available)
-    const positiveTexts = responses
-      .map(r => r.positiveText)
-      .filter((t): t is string => t !== null && t.trim().length > 0)
-    const improvementTexts = responses
-      .map(r => r.improvementText)
+    // AI Analysis Section (if comments available)
+    const comments = responses
+      .map(r => r.comment)
       .filter((t): t is string => t !== null && t.trim().length > 0)
 
-    if (positiveTexts.length >= 5 || improvementTexts.length >= 5) {
+    if (comments.length >= 5) {
       // Check if we need a new page
       if (currentY > 220) {
         doc.addPage()
@@ -307,9 +304,9 @@ export async function GET(
 
         if (cachedAnalysis) {
           analysis = cachedAnalysis.analysis as unknown as AnalysisResult
-        } else if (positiveTexts.length >= 5 || improvementTexts.length >= 5) {
+        } else if (comments.length >= 5) {
           // Generate fresh analysis
-          analysis = await analyzeResponses(positiveTexts, improvementTexts)
+          analysis = await analyzeResponses(comments)
         }
 
         if (analysis) {
