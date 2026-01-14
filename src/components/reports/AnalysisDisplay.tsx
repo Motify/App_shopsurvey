@@ -26,7 +26,10 @@ interface AnalysisData {
   summaryEn: string
   responseCount: number
   positiveCount?: number
-  improvementCount?: number
+  negativeCount?: number
+  neutralCount?: number
+  totalComments?: number
+  sampledComments?: number
   cached?: boolean
   cachedAt?: string
 }
@@ -188,7 +191,11 @@ export function AnalysisDisplay({
                 AIコメント分析
               </CardTitle>
               <CardDescription>
-                {analysis.responseCount}件のテキスト回答を分析
+                {analysis.totalComments && analysis.sampledComments && analysis.totalComments > analysis.sampledComments ? (
+                  <>{analysis.totalComments}件中{analysis.sampledComments}件をランダムサンプリングして分析</>
+                ) : (
+                  <>{analysis.responseCount}件のテキスト回答を分析</>
+                )}
                 {analysis.cached && (
                   <Badge variant="outline" className="ml-2 text-xs">
                     キャッシュ済み

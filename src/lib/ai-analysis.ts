@@ -35,15 +35,31 @@ export interface AnalysisResult {
   positiveCount: number
   negativeCount: number
   neutralCount: number
+  totalComments?: number
+  sampledComments?: number
+}
+
+// Maximum number of comments to send to AI (to avoid token limits and timeouts)
+const MAX_SAMPLE_SIZE = 75
+
+// Fisher-Yates shuffle for random sampling
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
 }
 
 export async function analyzeResponses(
   comments: string[]
 ): Promise<AnalysisResult> {
   const filteredComments = comments.filter(t => t?.trim())
+  const totalComments = filteredComments.length
 
   // If no text responses, return empty analysis
-  if (filteredComments.length === 0) {
+  if (totalComments === 0) {
     return {
       positiveThemes: [],
       improvementThemes: [],
@@ -52,13 +68,26 @@ export async function analyzeResponses(
       positiveCount: 0,
       negativeCount: 0,
       neutralCount: 0,
+      totalComments: 0,
+      sampledComments: 0,
     }
   }
+
+  // Sample comments if there are too many
+  let commentsToAnalyze = filteredComments
+  const isSampled = totalComments > MAX_SAMPLE_SIZE
+  if (isSampled) {
+    commentsToAnalyze = shuffleArray(filteredComments).slice(0, MAX_SAMPLE_SIZE)
+  }
+
+  const samplingNote = isSampled
+    ? `\n\nNote: These are ${MAX_SAMPLE_SIZE} randomly sampled comments from a total of ${totalComments}. Scale your counts proportionally.`
+    : ''
 
   const prompt = `You are analyzing employee survey comments for a shop/retail business in Japan.
 
 ## Employee Comments:
-${filteredComments.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+${commentsToAnalyze.map((t, i) => `${i + 1}. ${t}`).join('\n')}${samplingNote}
 
 First, classify each comment as:
 - POSITIVE: Expresses satisfaction, appreciation, or what they like about working here
@@ -120,6 +149,8 @@ Return ONLY valid JSON, no other text or markdown formatting.`
     result.positiveCount = result.positiveCount || 0
     result.negativeCount = result.negativeCount || 0
     result.neutralCount = result.neutralCount || 0
+    result.totalComments = totalComments
+    result.sampledComments = commentsToAnalyze.length
 
     return result
   } catch (parseError) {
