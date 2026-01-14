@@ -395,16 +395,22 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-bold">レポート</h1>
           <p className="text-muted-foreground">店舗ごとの詳細スコアと分析</p>
         </div>
-        {reportData && (
-          <Button onClick={handleDownloadPDF} disabled={pdfLoading} variant="outline">
-            {pdfLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
-            )}
-            PDFをダウンロード
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push('/reports/compare')}>
+            <BarChart3 className="mr-2 h-4 w-4" />
+            店舗比較
           </Button>
-        )}
+          {reportData && (
+            <Button onClick={handleDownloadPDF} disabled={pdfLoading} variant="outline">
+              {pdfLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              PDFをダウンロード
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Shop Selection & Filters */}
