@@ -6,6 +6,7 @@ import { signOut } from 'next-auth/react'
 import { LayoutDashboard, Store, Users, Send, BarChart3, Building2, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/ui/logo'
 
 interface AdminSidebarProps {
   user: {
@@ -30,13 +31,8 @@ export function AdminSidebar({ user, companyName, isFullAccess }: AdminSidebarPr
 
   return (
     <div className="flex w-64 flex-col bg-slate-900">
-      <div className="flex h-16 items-center gap-2 px-6 border-b border-slate-800">
-        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-          <span className="text-sm font-bold text-primary-foreground">S</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <span className="text-lg font-semibold text-white block truncate">ShopSurvey</span>
-        </div>
+      <div className="flex h-16 items-center px-6 border-b border-slate-800">
+        <Logo size="md" variant="light" />
       </div>
 
       <div className="px-4 py-3 border-b border-slate-800">

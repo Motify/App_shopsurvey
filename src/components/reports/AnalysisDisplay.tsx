@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,10 +50,17 @@ export function AnalysisDisplay({
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<{ message: string; responseCount?: number } | null>(null)
-  const [hasFetched, setHasFetched] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+
+  // Auto-load analysis on mount (will use cache if available)
+  useEffect(() => {
+    fetchAnalysis(false)
+  }, [shopId, startDate, endDate, includeChildren])
 
   const fetchAnalysis = async (refresh = false) => {
-    setLoading(true)
+    if (refresh) {
+      setLoading(true)
+    }
     setError(null)
 
     try {
@@ -74,55 +81,19 @@ export function AnalysisDisplay({
         setAnalysis(null)
       } else {
         setAnalysis(data)
+        setError(null)
       }
     } catch (err) {
       console.error('Failed to fetch analysis:', err)
       setError({ message: 'AI分析の取得に失敗しました' })
     } finally {
       setLoading(false)
-      setHasFetched(true)
+      setInitialLoading(false)
     }
   }
 
-  // Initial load button
-  if (!hasFetched && !loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-blue-500" />
-            AIコメント分析
-          </CardTitle>
-          <CardDescription>
-            従業員のテキスト回答をAIが分析し、主要なテーマを抽出します
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">
-              AI分析を実行してコメントの傾向を確認しましょう
-            </p>
-            <Button onClick={() => fetchAnalysis()} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  分析中...
-                </>
-              ) : (
-                <>
-                  <Lightbulb className="h-4 w-4 mr-2" />
-                  AI分析を実行
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Loading state
-  if (loading) {
+  // Initial loading state
+  if (initialLoading) {
     return (
       <Card>
         <CardHeader>
@@ -134,10 +105,7 @@ export function AnalysisDisplay({
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-4" />
-            <p className="text-muted-foreground">AIがコメントを分析中...</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              分析には数秒かかることがあります
-            </p>
+            <p className="text-muted-foreground">分析データを読み込み中...</p>
           </div>
         </CardContent>
       </Card>
@@ -165,7 +133,7 @@ export function AnalysisDisplay({
             )}
             <Button
               variant="outline"
-              onClick={() => fetchAnalysis()}
+              onClick={() => fetchAnalysis(true)}
               className="mt-4"
             >
               再試行

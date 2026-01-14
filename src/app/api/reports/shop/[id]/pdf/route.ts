@@ -363,7 +363,7 @@ export async function GET(
       doc.setPage(i)
       doc.setFontSize(8)
       doc.setTextColor(128)
-      doc.text('ShopSurvey - Employee Engagement Survey System', 105, 285, { align: 'center' })
+      doc.text('人事CREW - Employee Engagement Survey System', 105, 285, { align: 'center' })
     }
 
     // Generate PDF buffer

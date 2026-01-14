@@ -357,7 +357,7 @@ export async function GET(request: Request) {
       doc.setPage(i)
       doc.setFontSize(8)
       doc.setTextColor(128)
-      doc.text('ShopSurvey - Employee Engagement Survey System', 105, 285, { align: 'center' })
+      doc.text('人事CREW - Employee Engagement Survey System', 105, 285, { align: 'center' })
       doc.text(`Page ${i} of ${pageCount}`, 190, 285, { align: 'right' })
     }
 

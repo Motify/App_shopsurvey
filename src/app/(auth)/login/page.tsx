@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
+import { Logo } from '@/components/ui/logo'
 
 export default function LoginPage() {
   const [ready, setReady] = useState(false)
@@ -82,13 +83,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary-foreground">S</span>
-            </div>
+            <Logo size="lg" variant="dark" />
           </div>
-          <CardTitle className="text-2xl font-bold">ShopSurvey</CardTitle>
           <CardDescription>
-            Enter your credentials to access your account
+            アカウントにログインしてください
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
