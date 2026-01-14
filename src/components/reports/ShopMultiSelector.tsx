@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { ChevronRight, Store } from 'lucide-react'
+import { ChevronRight, Store, Search } from 'lucide-react'
 
 interface Shop {
   id: string
@@ -93,7 +95,15 @@ export function ShopMultiSelector({
   min = 2,
   max = 5,
 }: ShopMultiSelectorProps) {
+  const [searchQuery, setSearchQuery] = useState('')
   const flatShops = flattenShops(shops)
+
+  // Filter shops by search query
+  const filteredShops = searchQuery.trim()
+    ? flatShops.filter((shop) =>
+        shop.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : flatShops
 
   const handleToggle = (shopId: string) => {
     if (selected.includes(shopId)) {
@@ -108,13 +118,26 @@ export function ShopMultiSelector({
       <p className="text-sm text-muted-foreground mb-2">
         {selected.length} / {max} 店舗を選択中 (最低{min}店舗)
       </p>
+
+      {/* Search input */}
+      <div className="relative mb-2">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="店舗名で検索..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       <div className="border rounded-lg max-h-72 overflow-y-auto">
-        {flatShops.length === 0 ? (
+        {filteredShops.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground">
-            店舗がありません
+            {searchQuery ? '検索結果がありません' : '店舗がありません'}
           </div>
         ) : (
-          flatShops.map((shop) => (
+          filteredShops.map((shop) => (
             <div
               key={shop.id}
               className={cn(

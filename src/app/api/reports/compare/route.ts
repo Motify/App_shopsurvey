@@ -35,19 +35,29 @@ interface GapAnalysis {
 
 // Calculate rankings for shops
 function calculateRankings(shopReports: ShopReport[]) {
-  const validReports = shopReports.filter(r => r.scores.overall !== null)
+  // Separate shops with and without data
+  const withData = shopReports.filter(r => r.scores.overall !== null)
+  const withoutData = shopReports.filter(r => r.scores.overall === null)
 
+  // Sort shops with data by score, then append shops without data at the end
   const rankings = {
-    overall: [...validReports].sort((a, b) => (b.scores.overall ?? 0) - (a.scores.overall ?? 0)),
+    overall: [
+      ...withData.sort((a, b) => (b.scores.overall ?? 0) - (a.scores.overall ?? 0)),
+      ...withoutData,
+    ],
     byCategory: {} as Record<string, ShopReport[]>,
   }
 
   const categories = Object.keys(CATEGORY_LABELS).filter(k => k !== 'ENPS' && k !== 'FREE_TEXT') as CategoryKey[]
 
   for (const category of categories) {
-    rankings.byCategory[category] = [...validReports]
-      .filter(r => r.scores.categories[category] !== null)
-      .sort((a, b) => (b.scores.categories[category] ?? 0) - (a.scores.categories[category] ?? 0))
+    const categoryWithData = shopReports.filter(r => r.scores.categories[category] !== null)
+    const categoryWithoutData = shopReports.filter(r => r.scores.categories[category] === null)
+
+    rankings.byCategory[category] = [
+      ...categoryWithData.sort((a, b) => (b.scores.categories[category] ?? 0) - (a.scores.categories[category] ?? 0)),
+      ...categoryWithoutData,
+    ]
   }
 
   return rankings

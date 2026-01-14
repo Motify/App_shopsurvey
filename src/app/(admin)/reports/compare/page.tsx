@@ -93,7 +93,7 @@ export default function CompareReportsPage() {
       const response = await fetch('/api/shops')
       const data = await response.json()
       if (response.ok) {
-        setShops(data.shops || [])
+        setShops(Array.isArray(data) ? data : [])
       }
     } catch (err) {
       console.error('Failed to fetch shops:', err)
