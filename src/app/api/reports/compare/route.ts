@@ -3,12 +3,9 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getAccessibleShopIds } from '@/lib/access'
 import {
-  calculateAllCategoryScores,
-  calculateOverallScore,
-  calculateENPS,
   CATEGORY_LABELS,
+  CATEGORY_MAPPING,
   CategoryKey,
-  ResponseAnswers,
 } from '@/lib/scoring'
 
 interface ShopReport {
@@ -33,13 +30,56 @@ interface GapAnalysis {
   gap: number
 }
 
+interface ShopNode {
+  id: string
+  name: string
+  parentId: string | null
+}
+
+// Build descendant map from flat shop list (in-memory, no extra queries)
+function buildDescendantMap(shops: ShopNode[]): Map<string, string[]> {
+  const childrenMap = new Map<string, string[]>()
+
+  // Build parent -> children mapping
+  for (const shop of shops) {
+    if (shop.parentId) {
+      const siblings = childrenMap.get(shop.parentId) || []
+      siblings.push(shop.id)
+      childrenMap.set(shop.parentId, siblings)
+    }
+  }
+
+  // For each shop, recursively collect all descendants
+  const descendantMap = new Map<string, string[]>()
+
+  function getDescendants(shopId: string): string[] {
+    if (descendantMap.has(shopId)) {
+      return descendantMap.get(shopId)!
+    }
+
+    const children = childrenMap.get(shopId) || []
+    const allDescendants: string[] = [...children]
+
+    for (const childId of children) {
+      allDescendants.push(...getDescendants(childId))
+    }
+
+    descendantMap.set(shopId, allDescendants)
+    return allDescendants
+  }
+
+  for (const shop of shops) {
+    getDescendants(shop.id)
+  }
+
+  return descendantMap
+}
+
 // Calculate rankings for shops
 function calculateRankings(shopReports: ShopReport[]) {
-  // Separate shops with and without data
   const withData = shopReports.filter(r => r.scores.overall !== null)
   const withoutData = shopReports.filter(r => r.scores.overall === null)
 
-  // Sort shops with data by score, then append shops without data at the end
   const rankings = {
     overall: [
       ...withData.sort((a, b) => (b.scores.overall ?? 0) - (a.scores.overall ?? 0)),
@@ -98,7 +138,6 @@ function findBiggestGaps(shopReports: ShopReport[]): GapAnalysis[] {
     })
   }
 
-  // Sort by biggest gap
   return gaps.sort((a, b) => b.gap - a.gap)
 }
 
@@ -130,7 +169,26 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '最大5店舗まで選択できます' }, { status: 400 })
     }
 
-    // Verify access to all shops
+    // Verify access and get admin info in one query
+    const admin = await prisma.admin.findUnique({
+      where: { id: session.user.id },
+      include: { company: true },
+    })
+
+    if (!admin) {
+      return NextResponse.json({ error: 'Admin not found' }, { status: 404 })
+    }
+
+    // Get ALL company shops in ONE query
+    const allCompanyShops = await prisma.shop.findMany({
+      where: { companyId: admin.companyId },
+      select: { id: true, name: true, parentId: true },
+    })
+
+    // Build descendant map in memory (no additional queries)
+    const descendantMap = buildDescendantMap(allCompanyShops)
+
+    // Verify access to all requested shops
     const { shopIds: accessibleShopIds } = await getAccessibleShopIds(session.user.id)
     for (const shopId of shopIds) {
       if (!accessibleShopIds.includes(shopId)) {
@@ -138,62 +196,137 @@ export async function GET(request: Request) {
       }
     }
 
-    // Build date filter
-    const dateFilter: { gte?: Date; lte?: Date } = {}
+    // Build date filter conditions for raw SQL
+    let dateCondition = ''
+    const dateParams: (string | Date)[] = []
     if (startDateParam) {
-      dateFilter.gte = new Date(startDateParam)
+      dateCondition += ` AND r.submitted_at >= $2`
+      dateParams.push(new Date(startDateParam))
     }
     if (endDateParam) {
       const endOfDay = new Date(endDateParam)
       endOfDay.setHours(23, 59, 59, 999)
-      dateFilter.lte = endOfDay
+      const paramIndex = dateParams.length + 2
+      dateCondition += ` AND r.submitted_at <= $${paramIndex}`
+      dateParams.push(endOfDay)
     }
 
-    // Get data for each shop
+    // For each selected shop, get all shop IDs to aggregate (self + descendants)
+    const shopToAggregateIds = new Map<string, string[]>()
+    for (const shopId of shopIds) {
+      const descendants = descendantMap.get(shopId) || []
+      shopToAggregateIds.set(shopId, [shopId, ...descendants])
+    }
+
+    // Use database aggregation for each shop group - much faster than fetching all rows
     const shopReports: ShopReport[] = await Promise.all(
       shopIds.map(async (shopId) => {
-        const shop = await prisma.shop.findUnique({
-          where: { id: shopId },
-          select: { id: true, name: true, parentId: true },
-        })
-
+        const shop = allCompanyShops.find(s => s.id === shopId)
         if (!shop) {
           throw new Error(`Shop ${shopId} not found`)
         }
 
-        const responses = await prisma.response.findMany({
-          where: {
-            shopId,
-            ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
-          },
-          select: { answers: true },
-        })
+        const aggregateShopIds = shopToAggregateIds.get(shopId)!
 
-        const answers = responses.map(r => r.answers as ResponseAnswers)
-        const categoryScores = calculateAllCategoryScores(answers)
-        const overallScore = calculateOverallScore(answers)
-        const enpsResult = calculateENPS(answers)
+        // Use raw SQL for database-level aggregation
+        // This is MUCH faster than fetching thousands of rows
+        const result = await prisma.$queryRawUnsafe<Array<{
+          count: bigint
+          avg_q1: number | null
+          avg_q2: number | null
+          avg_q3: number | null
+          avg_q4: number | null
+          avg_q5: number | null
+          avg_q6: number | null
+          avg_q7: number | null
+          avg_q8: number | null
+          avg_q9: number | null
+          avg_q10: number | null
+          promoters: bigint
+          detractors: bigint
+        }>>`
+          SELECT
+            COUNT(*) as count,
+            AVG((answers->>'q1')::numeric) as avg_q1,
+            AVG((answers->>'q2')::numeric) as avg_q2,
+            AVG((answers->>'q3')::numeric) as avg_q3,
+            AVG((answers->>'q4')::numeric) as avg_q4,
+            AVG((answers->>'q5')::numeric) as avg_q5,
+            AVG((answers->>'q6')::numeric) as avg_q6,
+            AVG((answers->>'q7')::numeric) as avg_q7,
+            AVG((answers->>'q8')::numeric) as avg_q8,
+            AVG((answers->>'q9')::numeric) as avg_q9,
+            AVG((answers->>'q10')::numeric) as avg_q10,
+            COUNT(CASE WHEN (answers->>'q10')::numeric >= 9 THEN 1 END) as promoters,
+            COUNT(CASE WHEN (answers->>'q10')::numeric <= 6 THEN 1 END) as detractors
+          FROM responses r
+          WHERE r.shop_id = ANY($1::text[])
+          ${dateCondition}
+        `, aggregateShopIds, ...dateParams)
+
+        const row = result[0]
+        const responseCount = Number(row?.count ?? 0)
+
+        if (responseCount === 0) {
+          return {
+            shop: { id: shop.id, name: shop.name, parentId: shop.parentId },
+            scores: {
+              overall: null,
+              categories: Object.fromEntries(
+                Object.keys(CATEGORY_MAPPING).map(k => [k, null])
+              ),
+              enps: null,
+            },
+            responseCount: 0,
+          }
+        }
+
+        // Calculate category scores from averages
+        const categoryScores: Record<string, number | null> = {}
+        for (const [category, questions] of Object.entries(CATEGORY_MAPPING)) {
+          const questionAvgs = questions.map(q => {
+            const key = `avg_${q}` as keyof typeof row
+            return row[key] as number | null
+          }).filter((v): v is number => v !== null)
+
+          categoryScores[category] = questionAvgs.length > 0
+            ? questionAvgs.reduce((a, b) => a + b, 0) / questionAvgs.length
+            : null
+        }
+
+        // Calculate overall score (Q1-Q9 average)
+        const q1to9Avgs = [
+          row.avg_q1, row.avg_q2, row.avg_q3, row.avg_q4, row.avg_q5,
+          row.avg_q6, row.avg_q7, row.avg_q8, row.avg_q9
+        ].filter((v): v is number => v !== null)
+
+        const overallScore = q1to9Avgs.length > 0
+          ? q1to9Avgs.reduce((a, b) => a + b, 0) / q1to9Avgs.length
+          : null
+
+        // Calculate eNPS
+        const promoters = Number(row.promoters ?? 0)
+        const detractors = Number(row.detractors ?? 0)
+        const q10Count = promoters + detractors + (responseCount - promoters - detractors) // includes passives
+        const enps = q10Count > 0
+          ? Math.round(((promoters - detractors) / q10Count) * 100)
+          : null
 
         return {
-          shop,
+          shop: { id: shop.id, name: shop.name, parentId: shop.parentId },
           scores: {
             overall: overallScore,
             categories: categoryScores,
-            enps: enpsResult.score,
+            enps,
           },
-          responseCount: responses.length,
+          responseCount,
         }
       })
     )
 
     // Get industry benchmark
-    const admin = await prisma.admin.findUnique({
-      where: { id: session.user.id },
-      include: { company: true },
-    })
-
     const benchmarks = await prisma.benchmark.findMany({
-      where: { industry: admin?.company.industry },
+      where: { industry: admin.company.industry },
     })
 
     const benchmarkMap: Record<string, number> = {}

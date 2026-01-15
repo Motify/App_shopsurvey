@@ -20,6 +20,12 @@ import { ScoreRadarChart } from '@/components/charts/ScoreRadarChart'
 import { TrendLineChart, ENPSTrendChart } from '@/components/charts/TrendLineChart'
 import { AnalysisDisplay } from '@/components/reports/AnalysisDisplay'
 import {
+  QuestionAnalysis,
+  CorrelationAnalysis,
+  PatternAlerts,
+  PercentileDisplay,
+} from '@/components/reports/AnalyticsComponents'
+import {
   Loader2,
   Store,
   AlertTriangle,
@@ -36,6 +42,7 @@ import {
   Calendar,
   TrendingUp,
   BarChart3,
+  Lightbulb,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CATEGORY_LABELS, CategoryKey, REVERSE_SCORED_CATEGORIES } from '@/lib/scoring'
@@ -211,7 +218,16 @@ export default function ReportsPage() {
   const [pdfLoading, setPdfLoading] = useState(false)
 
   // Active tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'trend' | 'analysis'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'trend' | 'analysis' | 'analytics'>('overview')
+
+  // Analytics data
+  const [analyticsData, setAnalyticsData] = useState<{
+    questions: { all: unknown[]; lowestScoring: unknown[]; highestScoring: unknown[] }
+    correlations: { data: unknown[] | null; insight: { ja: string; en: string } | null; message?: string; currentCount?: number; minResponses: number }
+    patterns: unknown[]
+    percentile: { percentile: number; rank: number; totalShops: number; score: number } | null
+  } | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   // Fetch shops on mount
   useEffect(() => {
@@ -233,6 +249,13 @@ export default function ReportsPage() {
       fetchTrend()
     }
   }, [selectedShopId, includeChildren, showTrend])
+
+  // Fetch analytics when tab selected
+  useEffect(() => {
+    if (selectedShopId && activeTab === 'analytics') {
+      fetchAnalytics()
+    }
+  }, [selectedShopId, activeTab, customStartDate, customEndDate])
 
   const fetchShops = async () => {
     try {
@@ -294,6 +317,29 @@ export default function ReportsPage() {
       console.error('Failed to fetch trend:', err)
     } finally {
       setTrendLoading(false)
+    }
+  }
+
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (customStartDate) params.set('startDate', customStartDate)
+      if (customEndDate) params.set('endDate', customEndDate)
+
+      const response = await fetch(`/api/reports/shop/${selectedShopId}/analytics?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        setAnalyticsData(data)
+      } else {
+        const error = await response.json()
+        console.error('Analytics error:', error)
+        setAnalyticsData(null)
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err)
+    } finally {
+      setAnalyticsLoading(false)
     }
   }
 
@@ -564,6 +610,13 @@ export default function ReportsPage() {
             <MessageSquare className="mr-2 h-4 w-4" />
             AI分析
           </Button>
+          <Button
+            variant={activeTab === 'analytics' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('analytics')}
+          >
+            <Lightbulb className="mr-2 h-4 w-4" />
+            詳細分析
+          </Button>
         </div>
       )}
 
@@ -640,6 +693,43 @@ export default function ReportsPage() {
           endDate={customEndDate || undefined}
           includeChildren={includeChildren}
         />
+      )}
+
+      {/* Advanced Analytics View */}
+      {!loading && activeTab === 'analytics' && selectedShopId && (
+        <div className="space-y-6">
+          {analyticsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : analyticsData ? (
+            <>
+              {/* Top row: Percentile and Correlation */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <PercentileDisplay percentile={analyticsData.percentile} />
+                <CorrelationAnalysis data={analyticsData.correlations as Parameters<typeof CorrelationAnalysis>[0]['data']} />
+              </div>
+
+              {/* Pattern Alerts */}
+              <PatternAlerts patterns={analyticsData.patterns as Parameters<typeof PatternAlerts>[0]['patterns']} />
+
+              {/* Question Analysis */}
+              <QuestionAnalysis data={analyticsData.questions as Parameters<typeof QuestionAnalysis>[0]['data']} />
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  分析データを取得できませんでした
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  回答数が3件以上必要です
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       {/* Report Display */}

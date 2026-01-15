@@ -2,100 +2,191 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import {
-  calculateAllCategoryScores,
-  calculateOverallScore,
   getOverallRiskLevel,
   getCategoryRiskLevel,
   getConfidenceLevel,
-  calculateENPS,
   getENPSRiskLevel,
   CATEGORY_LABELS,
+  CATEGORY_MAPPING,
   CategoryKey,
   REVERSE_SCORED_CATEGORIES,
-  ResponseAnswers,
 } from '@/lib/scoring'
 
-// Helper to get all descendant shop IDs recursively
-async function getDescendantShopIds(shopId: string): Promise<string[]> {
-  const descendants: string[] = []
+interface ShopNode {
+  id: string
+  parentId: string | null
+}
 
-  const getChildren = async (parentId: string) => {
-    const children = await prisma.shop.findMany({
-      where: { parentId },
-      select: { id: true },
-    })
+// Build descendant map from flat shop list (in-memory, no extra queries)
+function buildDescendantMap(shops: ShopNode[]): Map<string, string[]> {
+  const childrenMap = new Map<string, string[]>()
 
-    for (const child of children) {
-      descendants.push(child.id)
-      await getChildren(child.id)
+  for (const shop of shops) {
+    if (shop.parentId) {
+      const siblings = childrenMap.get(shop.parentId) || []
+      siblings.push(shop.id)
+      childrenMap.set(shop.parentId, siblings)
     }
   }
 
-  await getChildren(shopId)
-  return descendants
+  const descendantMap = new Map<string, string[]>()
+
+  function getDescendants(shopId: string): string[] {
+    if (descendantMap.has(shopId)) {
+      return descendantMap.get(shopId)!
+    }
+
+    const children = childrenMap.get(shopId) || []
+    const allDescendants: string[] = [...children]
+
+    for (const childId of children) {
+      allDescendants.push(...getDescendants(childId))
+    }
+
+    descendantMap.set(shopId, allDescendants)
+    return allDescendants
+  }
+
+  for (const shop of shops) {
+    getDescendants(shop.id)
+  }
+
+  return descendantMap
 }
 
-// Helper to calculate scores from responses
-function calculateScoresFromResponses(responses: { answers: unknown; comment: string | null; submittedAt: Date }[]) {
-  const answers = responses.map(r => r.answers as ResponseAnswers)
-  const categoryScores = calculateAllCategoryScores(answers)
-  const overallScore = calculateOverallScore(answers)
-  const enpsResult = calculateENPS(answers)
+// Database aggregation result type
+interface AggregationResult {
+  count: bigint
+  avg_q1: number | null
+  avg_q2: number | null
+  avg_q3: number | null
+  avg_q4: number | null
+  avg_q5: number | null
+  avg_q6: number | null
+  avg_q7: number | null
+  avg_q8: number | null
+  avg_q9: number | null
+  avg_q10: number | null
+  promoters: bigint
+  passives: bigint
+  detractors: bigint
+}
+
+// Calculate scores from aggregation result
+function calculateScoresFromAggregation(row: AggregationResult | undefined) {
+  const responseCount = Number(row?.count ?? 0)
+
+  if (!row || responseCount === 0) {
+    return {
+      categoryScores: Object.fromEntries(
+        Object.keys(CATEGORY_MAPPING).map(k => [k, null])
+      ) as Record<CategoryKey, number | null>,
+      overallScore: null,
+      enpsResult: {
+        score: null,
+        promoters: 0,
+        passives: 0,
+        detractors: 0,
+        totalResponses: 0,
+        promoterPercentage: null,
+        detractorPercentage: null,
+      },
+      responseCount: 0,
+    }
+  }
+
+  // Calculate category scores
+  const categoryScores: Record<string, number | null> = {}
+  for (const [category, questions] of Object.entries(CATEGORY_MAPPING)) {
+    const questionAvgs = questions.map(q => {
+      const key = `avg_${q}` as keyof AggregationResult
+      return row[key] as number | null
+    }).filter((v): v is number => v !== null)
+
+    categoryScores[category] = questionAvgs.length > 0
+      ? questionAvgs.reduce((a, b) => a + b, 0) / questionAvgs.length
+      : null
+  }
+
+  // Calculate overall score (Q1-Q9 average)
+  const q1to9Avgs = [
+    row.avg_q1, row.avg_q2, row.avg_q3, row.avg_q4, row.avg_q5,
+    row.avg_q6, row.avg_q7, row.avg_q8, row.avg_q9
+  ].filter((v): v is number => v !== null)
+
+  const overallScore = q1to9Avgs.length > 0
+    ? q1to9Avgs.reduce((a, b) => a + b, 0) / q1to9Avgs.length
+    : null
+
+  // Calculate eNPS
+  const promoters = Number(row.promoters ?? 0)
+  const passives = Number(row.passives ?? 0)
+  const detractors = Number(row.detractors ?? 0)
+  const totalWithQ10 = promoters + passives + detractors
+
+  const enpsScore = totalWithQ10 > 0
+    ? Math.round(((promoters - detractors) / totalWithQ10) * 100)
+    : null
+
+  const promoterPercentage = totalWithQ10 > 0 ? (promoters / totalWithQ10) * 100 : null
+  const detractorPercentage = totalWithQ10 > 0 ? (detractors / totalWithQ10) * 100 : null
 
   return {
-    categoryScores,
+    categoryScores: categoryScores as Record<CategoryKey, number | null>,
     overallScore,
-    enpsResult,
-    responseCount: responses.length,
+    enpsResult: {
+      score: enpsScore,
+      promoters,
+      passives,
+      detractors,
+      totalResponses: totalWithQ10,
+      promoterPercentage,
+      detractorPercentage,
+    },
+    responseCount,
   }
 }
 
-// Helper to calculate changes between two periods
-function calculateChanges(
-  currentScores: ReturnType<typeof calculateScoresFromResponses>,
-  previousScores: ReturnType<typeof calculateScoresFromResponses>
-) {
-  const overallChange = currentScores.overallScore !== null && previousScores.overallScore !== null
-    ? {
-        value: currentScores.overallScore - previousScores.overallScore,
-        direction: currentScores.overallScore > previousScores.overallScore ? 'up' as const :
-                   currentScores.overallScore < previousScores.overallScore ? 'down' as const : 'same' as const,
-        percentage: previousScores.overallScore !== 0
-          ? ((currentScores.overallScore - previousScores.overallScore) / previousScores.overallScore * 100)
-          : null,
-      }
-    : null
+// Run aggregation query
+async function runAggregationQuery(
+  shopIds: string[],
+  dateFilter?: { gte?: Date; lte?: Date }
+): Promise<AggregationResult> {
+  let dateCondition = ''
+  const params: unknown[] = [shopIds]
 
-  const categoryChanges: Record<CategoryKey, { value: number; direction: 'up' | 'down' | 'same' } | null> = {} as Record<CategoryKey, { value: number; direction: 'up' | 'down' | 'same' } | null>
-
-  for (const category of Object.keys(currentScores.categoryScores) as CategoryKey[]) {
-    const current = currentScores.categoryScores[category]
-    const previous = previousScores.categoryScores[category]
-
-    if (current !== null && previous !== null) {
-      const diff = current - previous
-      categoryChanges[category] = {
-        value: diff,
-        direction: diff > 0.05 ? 'up' : diff < -0.05 ? 'down' : 'same',
-      }
-    } else {
-      categoryChanges[category] = null
-    }
+  if (dateFilter?.gte) {
+    dateCondition += ` AND r.submitted_at >= $2`
+    params.push(dateFilter.gte)
+  }
+  if (dateFilter?.lte) {
+    const paramIndex = params.length + 1
+    dateCondition += ` AND r.submitted_at <= $${paramIndex}`
+    params.push(dateFilter.lte)
   }
 
-  const enpsChange = currentScores.enpsResult.score !== null && previousScores.enpsResult.score !== null
-    ? {
-        value: currentScores.enpsResult.score - previousScores.enpsResult.score,
-        direction: currentScores.enpsResult.score > previousScores.enpsResult.score ? 'up' as const :
-                   currentScores.enpsResult.score < previousScores.enpsResult.score ? 'down' as const : 'same' as const,
-      }
-    : null
+  const result = await prisma.$queryRawUnsafe<AggregationResult[]>(`
+    SELECT
+      COUNT(*) as count,
+      AVG((answers->>'q1')::numeric) as avg_q1,
+      AVG((answers->>'q2')::numeric) as avg_q2,
+      AVG((answers->>'q3')::numeric) as avg_q3,
+      AVG((answers->>'q4')::numeric) as avg_q4,
+      AVG((answers->>'q5')::numeric) as avg_q5,
+      AVG((answers->>'q6')::numeric) as avg_q6,
+      AVG((answers->>'q7')::numeric) as avg_q7,
+      AVG((answers->>'q8')::numeric) as avg_q8,
+      AVG((answers->>'q9')::numeric) as avg_q9,
+      AVG((answers->>'q10')::numeric) as avg_q10,
+      COUNT(CASE WHEN (answers->>'q10')::numeric >= 9 THEN 1 END) as promoters,
+      COUNT(CASE WHEN (answers->>'q10')::numeric >= 7 AND (answers->>'q10')::numeric <= 8 THEN 1 END) as passives,
+      COUNT(CASE WHEN (answers->>'q10')::numeric <= 6 THEN 1 END) as detractors
+    FROM responses r
+    WHERE r.shop_id = ANY($1::text[])
+    ${dateCondition}
+  `, ...params)
 
-  return {
-    overall: overallChange,
-    categories: categoryChanges,
-    enps: enpsChange,
-  }
+  return result[0]
 }
 
 // GET /api/reports/shop/[id] - Get report for a shop
@@ -126,7 +217,7 @@ export async function GET(
     const compareStartDate = compareStartParam ? new Date(compareStartParam) : undefined
     const compareEndDate = compareEndParam ? new Date(compareEndParam) : undefined
 
-    // Get admin info
+    // Get admin info with company
     const admin = await prisma.admin.findUnique({
       where: { id: session.user.id },
       include: {
@@ -142,37 +233,41 @@ export async function GET(
     // Get shop info
     const shop = await prisma.shop.findUnique({
       where: { id: shopId },
-      include: {
-        company: true,
-      },
+      include: { company: true },
     })
 
     if (!shop) {
       return NextResponse.json({ error: 'Shop not found' }, { status: 404 })
     }
 
-    // Verify access
+    // Verify company access
     if (shop.companyId !== admin.companyId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
+    // Get ALL company shops in ONE query for descendant calculation
+    const allCompanyShops = await prisma.shop.findMany({
+      where: { companyId: admin.companyId },
+      select: { id: true, parentId: true },
+    })
+
+    // Build descendant map in memory
+    const descendantMap = buildDescendantMap(allCompanyShops)
+
+    // Check access for non-full-access admins
     if (!admin.isFullAccess) {
       const assignedShopIds = admin.shopAssignments.map(a => a.shopId)
-      // Check if this shop or any of its ancestors is assigned
       let hasAccess = assignedShopIds.includes(shopId)
 
       if (!hasAccess) {
-        // Check if any assigned shop is an ancestor of this shop
-        let currentShop = shop
-        while (currentShop.parentId && !hasAccess) {
-          if (assignedShopIds.includes(currentShop.parentId)) {
+        // Check if any assigned shop is an ancestor
+        let currentId: string | null = shop.parentId
+        while (currentId && !hasAccess) {
+          if (assignedShopIds.includes(currentId)) {
             hasAccess = true
           } else {
-            const parentShop = await prisma.shop.findUnique({
-              where: { id: currentShop.parentId },
-            })
-            if (!parentShop) break
-            currentShop = parentShop as typeof shop
+            const parent = allCompanyShops.find(s => s.id === currentId)
+            currentId = parent?.parentId ?? null
           }
         }
       }
@@ -185,78 +280,125 @@ export async function GET(
     // Get shop IDs to include in report
     let shopIds = [shopId]
     if (includeChildren) {
-      const descendantIds = await getDescendantShopIds(shopId)
-      shopIds = [...shopIds, ...descendantIds]
+      const descendantIds = descendantMap.get(shopId) || []
+      shopIds = [shopId, ...descendantIds]
     }
 
     // Build date filter
     const dateFilter: { gte?: Date; lte?: Date } = {}
     if (startDate) dateFilter.gte = startDate
     if (endDate) {
-      // Set end date to end of day
       const endOfDay = new Date(endDate)
       endOfDay.setHours(23, 59, 59, 999)
       dateFilter.lte = endOfDay
     }
 
-    // Fetch current period responses
-    const responses = await prisma.response.findMany({
-      where: {
-        shopId: { in: shopIds },
-        ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
-      },
-      select: { answers: true, comment: true, submittedAt: true },
-      orderBy: { submittedAt: 'desc' },
-    })
+    // Run aggregation query (FAST - database does the calculation)
+    const aggregationResult = await runAggregationQuery(
+      shopIds,
+      Object.keys(dateFilter).length > 0 ? dateFilter : undefined
+    )
 
-    // Calculate current period scores
-    const currentScores = calculateScoresFromResponses(responses)
-    const answers = responses.map(r => r.answers as ResponseAnswers)
-    const overallRisk = currentScores.overallScore !== null ? getOverallRiskLevel(currentScores.overallScore) : null
-    const confidence = getConfidenceLevel(responses.length)
+    const currentScores = calculateScoresFromAggregation(aggregationResult)
+    const overallRisk = currentScores.overallScore !== null
+      ? getOverallRiskLevel(currentScores.overallScore)
+      : null
+    const confidence = getConfidenceLevel(currentScores.responseCount)
     const enpsRisk = getENPSRiskLevel(currentScores.enpsResult.score)
 
-    // Fetch and calculate comparison period if requested
+    // Fetch comparison period if requested
     let comparison = null
     if (compareStartDate && compareEndDate) {
       const compareEndOfDay = new Date(compareEndDate)
       compareEndOfDay.setHours(23, 59, 59, 999)
 
-      const previousResponses = await prisma.response.findMany({
-        where: {
-          shopId: { in: shopIds },
-          submittedAt: {
-            gte: compareStartDate,
-            lte: compareEndOfDay,
-          },
-        },
-        select: { answers: true, comment: true, submittedAt: true },
-        orderBy: { submittedAt: 'desc' },
+      const compareResult = await runAggregationQuery(shopIds, {
+        gte: compareStartDate,
+        lte: compareEndOfDay,
       })
 
-      const previousScores = calculateScoresFromResponses(previousResponses)
-      const changes = calculateChanges(currentScores, previousScores)
+      const previousScores = calculateScoresFromAggregation(compareResult)
+
+      // Calculate changes
+      const overallChange = currentScores.overallScore !== null && previousScores.overallScore !== null
+        ? {
+            value: currentScores.overallScore - previousScores.overallScore,
+            direction: currentScores.overallScore > previousScores.overallScore ? 'up' as const :
+                       currentScores.overallScore < previousScores.overallScore ? 'down' as const : 'same' as const,
+            percentage: previousScores.overallScore !== 0
+              ? ((currentScores.overallScore - previousScores.overallScore) / previousScores.overallScore * 100)
+              : null,
+          }
+        : null
+
+      const categoryChanges: Record<CategoryKey, { value: number; direction: 'up' | 'down' | 'same' } | null> = {} as Record<CategoryKey, { value: number; direction: 'up' | 'down' | 'same' } | null>
+      for (const category of Object.keys(currentScores.categoryScores) as CategoryKey[]) {
+        const current = currentScores.categoryScores[category]
+        const previous = previousScores.categoryScores[category]
+
+        if (current !== null && previous !== null) {
+          const diff = current - previous
+          categoryChanges[category] = {
+            value: diff,
+            direction: diff > 0.05 ? 'up' : diff < -0.05 ? 'down' : 'same',
+          }
+        } else {
+          categoryChanges[category] = null
+        }
+      }
+
+      const enpsChange = currentScores.enpsResult.score !== null && previousScores.enpsResult.score !== null
+        ? {
+            value: currentScores.enpsResult.score - previousScores.enpsResult.score,
+            direction: currentScores.enpsResult.score > previousScores.enpsResult.score ? 'up' as const :
+                       currentScores.enpsResult.score < previousScores.enpsResult.score ? 'down' as const : 'same' as const,
+          }
+        : null
 
       comparison = {
         period: {
           startDate: compareStartDate,
           endDate: compareEndDate,
         },
-        responseCount: previousResponses.length,
+        responseCount: previousScores.responseCount,
         overallScore: previousScores.overallScore,
         categoryScores: previousScores.categoryScores,
         enps: previousScores.enpsResult,
-        changes,
+        changes: {
+          overall: overallChange,
+          categories: categoryChanges,
+          enps: enpsChange,
+        },
       }
     }
 
-    // Get comments (non-empty only)
-    const comments = responses
+    // Fetch only recent comments (limit 20) - separate lightweight query
+    const recentComments = await prisma.response.findMany({
+      where: {
+        shopId: { in: shopIds },
+        comment: { not: null },
+        ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
+      },
+      select: { comment: true, submittedAt: true },
+      orderBy: { submittedAt: 'desc' },
+      take: 20,
+    })
+
+    const comments = recentComments
       .filter(r => r.comment && r.comment.trim().length > 0)
       .map(r => ({
         text: r.comment!,
         submittedAt: r.submittedAt,
       }))
+
+    // Get comment count separately (fast count query)
+    const commentCount = await prisma.response.count({
+      where: {
+        shopId: { in: shopIds },
+        comment: { not: null },
+        ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
+      },
+    })
 
     // Get industry benchmark
     const benchmarks = await prisma.benchmark.findMany({
@@ -268,7 +410,6 @@ export async function GET(
       benchmarkMap[b.category] = b.avgScore
     }
 
-    // Calculate benchmark overall score (excluding reverse scored from average)
     const nonReverseBenchmarks = benchmarks.filter(
       b => !REVERSE_SCORED_CATEGORIES.includes(b.category as typeof REVERSE_SCORED_CATEGORIES[number])
     )
@@ -296,6 +437,17 @@ export async function GET(
       }
     })
 
+    // Get recent response times (lightweight query)
+    const recentResponses = await prisma.response.findMany({
+      where: {
+        shopId: { in: shopIds },
+        ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
+      },
+      select: { submittedAt: true },
+      orderBy: { submittedAt: 'desc' },
+      take: 10,
+    })
+
     return NextResponse.json({
       shop: {
         id: shop.id,
@@ -309,13 +461,12 @@ export async function GET(
       } : null,
       includesChildren: includeChildren,
       shopCount: shopIds.length,
-      responseCount: responses.length,
+      responseCount: currentScores.responseCount,
       overallScore: currentScores.overallScore,
       overallRisk,
       benchmarkOverall,
       categoryBreakdown,
       confidence,
-      // eNPS data
       enps: {
         score: currentScores.enpsResult.score,
         risk: enpsRisk,
@@ -327,14 +478,12 @@ export async function GET(
         detractorPercentage: currentScores.enpsResult.detractorPercentage,
         change: comparison?.changes.enps ?? null,
       },
-      // Comparison data
       comparison,
-      // Comments summary
       comments: {
-        total: comments.length,
-        recent: comments.slice(0, 20), // Last 20 comments
+        total: commentCount,
+        recent: comments,
       },
-      recentResponses: responses.slice(0, 10).map(r => ({
+      recentResponses: recentResponses.map(r => ({
         submittedAt: r.submittedAt,
       })),
     })
