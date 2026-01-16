@@ -4,7 +4,7 @@
   "description": "Employee retention survey system for multi-store businesses",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push && next build",
+    "build": "prisma generate && prisma db push && npx tsx prisma/seed.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
