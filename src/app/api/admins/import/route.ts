@@ -53,6 +53,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
+    // File size limit: 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: 'ファイルサイズは10MB以下にしてください' },
+        { status: 400 }
+      )
+    }
+
     const csvText = await file.text()
 
     // Parse CSV

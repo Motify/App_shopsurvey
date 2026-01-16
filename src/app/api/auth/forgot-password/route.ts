@@ -3,12 +3,21 @@ import { prisma } from '@/lib/prisma'
 import { sendPasswordResetEmail } from '@/lib/mailgun'
 import { z } from 'zod'
 import crypto from 'crypto'
+import { checkRateLimit, getClientIP, RATE_LIMITS, rateLimitResponse } from '@/lib/rate-limit'
+import { logAuthEvent, AuditAction } from '@/lib/audit'
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
 })
 
 export async function POST(request: Request) {
+  // Rate limiting by IP
+  const clientIP = getClientIP(request)
+  const rateLimit = checkRateLimit(`forgot-password:${clientIP}`, RATE_LIMITS.passwordReset)
+  if (!rateLimit.success) {
+    return rateLimitResponse(rateLimit.resetTime)
+  }
+
   try {
     const body = await request.json()
     const validation = forgotPasswordSchema.safeParse(body)
@@ -53,6 +62,15 @@ export async function POST(request: Request) {
       console.error('Failed to send reset email:', emailError)
       // Still return success to prevent email enumeration
     }
+
+    // Audit log
+    await logAuthEvent(
+      AuditAction.PASSWORD_RESET_REQUESTED,
+      request,
+      email,
+      true,
+      admin.id
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

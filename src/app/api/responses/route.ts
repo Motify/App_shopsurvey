@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { checkRateLimit, getClientIP, RATE_LIMITS, rateLimitResponse } from '@/lib/rate-limit'
 
 // Updated answer schema for 11 questions:
 // Q1-Q9: 1-5 scale
@@ -28,6 +29,13 @@ const submitResponseSchema = z.object({
 
 // POST /api/responses - Submit survey response (public)
 export async function POST(request: Request) {
+  // Rate limiting to prevent spam submissions
+  const clientIP = getClientIP(request)
+  const rateLimit = checkRateLimit(`survey-response:${clientIP}`, RATE_LIMITS.surveyResponse)
+  if (!rateLimit.success) {
+    return rateLimitResponse(rateLimit.resetTime)
+  }
+
   try {
     const body = await request.json()
     const validation = submitResponseSchema.safeParse(body)

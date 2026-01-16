@@ -112,6 +112,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: 'jwt',
+    maxAge: 24 * 60 * 60, // 24 hours (security best practice for admin panels)
+    updateAge: 60 * 60, // Refresh session every 1 hour on activity
   },
   trustHost: true,
 })

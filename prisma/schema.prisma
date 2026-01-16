@@ -275,3 +275,44 @@ model SurveyInvite {
   @@index([token])
   @@map("survey_invites")
 }
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  ADMIN_CREATED
+  ADMIN_UPDATED
+  ADMIN_DELETED
+  ADMIN_INVITED
+  SHOP_CREATED
+  SHOP_UPDATED
+  SHOP_DELETED
+  COMPANY_CREATED
+  COMPANY_UPDATED
+  ACCESS_DENIED
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  userId      String?     @map("user_id")
+  userEmail   String?     @map("user_email")
+  userRole    String?     @map("user_role")
+  targetType  String?     @map("target_type")  // e.g., "admin", "shop", "company"
+  targetId    String?     @map("target_id")
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent")
+  details     Json?       // Additional context
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
