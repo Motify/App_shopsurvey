@@ -107,7 +107,7 @@ function calculateCorrelations(responses: ResponseAnswers[]) {
   const categories = Object.keys(CATEGORY_MAPPING) as CategoryKey[]
 
   // Calculate overall score for each response
-  const dataPoints = responses.map(r => {
+  const dataPoints: Array<{ overall: number } & Record<CategoryKey, number>> = responses.map(r => {
     let total = 0
     let count = 0
     for (let i = 1; i <= 9; i++) {
@@ -119,7 +119,7 @@ function calculateCorrelations(responses: ResponseAnswers[]) {
     }
     const overall = count > 0 ? total / count : 0
 
-    const categoryScores: Record<string, number> = {}
+    const categoryScores = {} as Record<CategoryKey, number>
     for (const category of categories) {
       const questions = CATEGORY_MAPPING[category]
       let catTotal = 0
@@ -139,7 +139,7 @@ function calculateCorrelations(responses: ResponseAnswers[]) {
 
   // Calculate correlation of each category with overall score
   const correlations = categories.map(category => {
-    const categoryValues = dataPoints.map(d => d[category] as number)
+    const categoryValues = dataPoints.map(d => d[category])
     const overallValues = dataPoints.map(d => d.overall)
     const correlation = pearsonCorrelation(categoryValues, overallValues)
 

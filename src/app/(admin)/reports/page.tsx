@@ -228,6 +228,7 @@ export default function ReportsPage() {
     percentile: { percentile: number; rank: number; totalShops: number; score: number } | null
   } | null>(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsCacheKey, setAnalyticsCacheKey] = useState('')
 
   // Fetch shops on mount
   useEffect(() => {
@@ -250,12 +251,17 @@ export default function ReportsPage() {
     }
   }, [selectedShopId, includeChildren, showTrend])
 
-  // Fetch analytics when tab selected
+  // Fetch analytics when tab selected (with caching)
   useEffect(() => {
     if (selectedShopId && activeTab === 'analytics') {
-      fetchAnalytics()
+      const cacheKey = `${selectedShopId}-${customStartDate}-${customEndDate}`
+      // Only fetch if we don't have cached data for this configuration
+      if (cacheKey !== analyticsCacheKey) {
+        fetchAnalytics()
+        setAnalyticsCacheKey(cacheKey)
+      }
     }
-  }, [selectedShopId, activeTab, customStartDate, customEndDate])
+  }, [selectedShopId, activeTab, customStartDate, customEndDate, analyticsCacheKey])
 
   const fetchShops = async () => {
     try {
@@ -685,14 +691,16 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* AI Analysis View */}
-      {!loading && activeTab === 'analysis' && selectedShopId && (
-        <AnalysisDisplay
-          shopId={selectedShopId}
-          startDate={customStartDate || undefined}
-          endDate={customEndDate || undefined}
-          includeChildren={includeChildren}
-        />
+      {/* AI Analysis View - Keep mounted to preserve cache */}
+      {selectedShopId && (
+        <div className={activeTab === 'analysis' ? '' : 'hidden'}>
+          <AnalysisDisplay
+            shopId={selectedShopId}
+            startDate={customStartDate || undefined}
+            endDate={customEndDate || undefined}
+            includeChildren={includeChildren}
+          />
+        </div>
       )}
 
       {/* Advanced Analytics View */}

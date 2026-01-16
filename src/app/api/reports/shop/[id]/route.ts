@@ -56,7 +56,7 @@ function buildDescendantMap(shops: ShopNode[]): Map<string, string[]> {
 
 // Database aggregation result type
 interface AggregationResult {
-  count: bigint
+  count: number
   avg_q1: number | null
   avg_q2: number | null
   avg_q3: number | null
@@ -67,14 +67,14 @@ interface AggregationResult {
   avg_q8: number | null
   avg_q9: number | null
   avg_q10: number | null
-  promoters: bigint
-  passives: bigint
-  detractors: bigint
+  promoters: number
+  passives: number
+  detractors: number
 }
 
 // Calculate scores from aggregation result
 function calculateScoresFromAggregation(row: AggregationResult | undefined) {
-  const responseCount = Number(row?.count ?? 0)
+  const responseCount = row?.count ?? 0
 
   if (!row || responseCount === 0) {
     return {
@@ -100,7 +100,8 @@ function calculateScoresFromAggregation(row: AggregationResult | undefined) {
   for (const [category, questions] of Object.entries(CATEGORY_MAPPING)) {
     const questionAvgs = questions.map(q => {
       const key = `avg_${q}` as keyof AggregationResult
-      return row[key] as number | null
+      const val = row[key]
+      return typeof val === 'number' ? val : null
     }).filter((v): v is number => v !== null)
 
     categoryScores[category] = questionAvgs.length > 0
@@ -112,16 +113,16 @@ function calculateScoresFromAggregation(row: AggregationResult | undefined) {
   const q1to9Avgs = [
     row.avg_q1, row.avg_q2, row.avg_q3, row.avg_q4, row.avg_q5,
     row.avg_q6, row.avg_q7, row.avg_q8, row.avg_q9
-  ].filter((v): v is number => v !== null)
+  ].filter((v): v is number => typeof v === 'number')
 
   const overallScore = q1to9Avgs.length > 0
     ? q1to9Avgs.reduce((a, b) => a + b, 0) / q1to9Avgs.length
     : null
 
   // Calculate eNPS
-  const promoters = Number(row.promoters ?? 0)
-  const passives = Number(row.passives ?? 0)
-  const detractors = Number(row.detractors ?? 0)
+  const promoters = row.promoters ?? 0
+  const passives = row.passives ?? 0
+  const detractors = row.detractors ?? 0
   const totalWithQ10 = promoters + passives + detractors
 
   const enpsScore = totalWithQ10 > 0
@@ -167,20 +168,20 @@ async function runAggregationQuery(
 
   const result = await prisma.$queryRawUnsafe<AggregationResult[]>(`
     SELECT
-      COUNT(*) as count,
-      AVG((answers->>'q1')::numeric) as avg_q1,
-      AVG((answers->>'q2')::numeric) as avg_q2,
-      AVG((answers->>'q3')::numeric) as avg_q3,
-      AVG((answers->>'q4')::numeric) as avg_q4,
-      AVG((answers->>'q5')::numeric) as avg_q5,
-      AVG((answers->>'q6')::numeric) as avg_q6,
-      AVG((answers->>'q7')::numeric) as avg_q7,
-      AVG((answers->>'q8')::numeric) as avg_q8,
-      AVG((answers->>'q9')::numeric) as avg_q9,
-      AVG((answers->>'q10')::numeric) as avg_q10,
-      COUNT(CASE WHEN (answers->>'q10')::numeric >= 9 THEN 1 END) as promoters,
-      COUNT(CASE WHEN (answers->>'q10')::numeric >= 7 AND (answers->>'q10')::numeric <= 8 THEN 1 END) as passives,
-      COUNT(CASE WHEN (answers->>'q10')::numeric <= 6 THEN 1 END) as detractors
+      COUNT(*)::int as count,
+      AVG((answers->>'q1')::float8)::float8 as avg_q1,
+      AVG((answers->>'q2')::float8)::float8 as avg_q2,
+      AVG((answers->>'q3')::float8)::float8 as avg_q3,
+      AVG((answers->>'q4')::float8)::float8 as avg_q4,
+      AVG((answers->>'q5')::float8)::float8 as avg_q5,
+      AVG((answers->>'q6')::float8)::float8 as avg_q6,
+      AVG((answers->>'q7')::float8)::float8 as avg_q7,
+      AVG((answers->>'q8')::float8)::float8 as avg_q8,
+      AVG((answers->>'q9')::float8)::float8 as avg_q9,
+      AVG((answers->>'q10')::float8)::float8 as avg_q10,
+      COUNT(CASE WHEN (answers->>'q10')::int >= 9 THEN 1 END)::int as promoters,
+      COUNT(CASE WHEN (answers->>'q10')::int >= 7 AND (answers->>'q10')::int <= 8 THEN 1 END)::int as passives,
+      COUNT(CASE WHEN (answers->>'q10')::int <= 6 THEN 1 END)::int as detractors
     FROM responses r
     WHERE r.shop_id = ANY($1::text[])
     ${dateCondition}

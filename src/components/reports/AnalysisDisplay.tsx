@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -51,10 +51,22 @@ export function AnalysisDisplay({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<{ message: string; responseCount?: number } | null>(null)
   const [initialLoading, setInitialLoading] = useState(true)
+  // Track the configuration that was used to fetch the current cached analysis (using ref to avoid re-renders)
+  const cachedConfigRef = useRef('')
 
-  // Auto-load analysis on mount (will use cache if available)
+  // Auto-load analysis on mount or when configuration changes (will use API cache if available)
   useEffect(() => {
-    fetchAnalysis(false)
+    const currentConfig = `${shopId}-${startDate}-${endDate}-${includeChildren}`
+    // Only fetch if the configuration changed (not on tab switches)
+    if (currentConfig !== cachedConfigRef.current) {
+      // Show loading state when configuration actually changes (not on first mount)
+      if (cachedConfigRef.current !== '') {
+        setInitialLoading(true)
+        setAnalysis(null)
+      }
+      cachedConfigRef.current = currentConfig
+      fetchAnalysis(false)
+    }
   }, [shopId, startDate, endDate, includeChildren])
 
   const fetchAnalysis = async (refresh = false) => {

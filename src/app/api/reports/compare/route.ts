@@ -230,8 +230,27 @@ export async function GET(request: Request) {
 
         // Use raw SQL for database-level aggregation
         // This is MUCH faster than fetching thousands of rows
+        const query = `
+          SELECT
+            COUNT(*)::int as count,
+            AVG((answers->>'q1')::float8)::float8 as avg_q1,
+            AVG((answers->>'q2')::float8)::float8 as avg_q2,
+            AVG((answers->>'q3')::float8)::float8 as avg_q3,
+            AVG((answers->>'q4')::float8)::float8 as avg_q4,
+            AVG((answers->>'q5')::float8)::float8 as avg_q5,
+            AVG((answers->>'q6')::float8)::float8 as avg_q6,
+            AVG((answers->>'q7')::float8)::float8 as avg_q7,
+            AVG((answers->>'q8')::float8)::float8 as avg_q8,
+            AVG((answers->>'q9')::float8)::float8 as avg_q9,
+            AVG((answers->>'q10')::float8)::float8 as avg_q10,
+            COUNT(CASE WHEN (answers->>'q10')::int >= 9 THEN 1 END)::int as promoters,
+            COUNT(CASE WHEN (answers->>'q10')::int <= 6 THEN 1 END)::int as detractors
+          FROM responses r
+          WHERE r.shop_id = ANY($1::text[])
+          ${dateCondition}
+        `
         const result = await prisma.$queryRawUnsafe<Array<{
-          count: bigint
+          count: number
           avg_q1: number | null
           avg_q2: number | null
           avg_q3: number | null
@@ -242,30 +261,12 @@ export async function GET(request: Request) {
           avg_q8: number | null
           avg_q9: number | null
           avg_q10: number | null
-          promoters: bigint
-          detractors: bigint
-        }>>`
-          SELECT
-            COUNT(*) as count,
-            AVG((answers->>'q1')::numeric) as avg_q1,
-            AVG((answers->>'q2')::numeric) as avg_q2,
-            AVG((answers->>'q3')::numeric) as avg_q3,
-            AVG((answers->>'q4')::numeric) as avg_q4,
-            AVG((answers->>'q5')::numeric) as avg_q5,
-            AVG((answers->>'q6')::numeric) as avg_q6,
-            AVG((answers->>'q7')::numeric) as avg_q7,
-            AVG((answers->>'q8')::numeric) as avg_q8,
-            AVG((answers->>'q9')::numeric) as avg_q9,
-            AVG((answers->>'q10')::numeric) as avg_q10,
-            COUNT(CASE WHEN (answers->>'q10')::numeric >= 9 THEN 1 END) as promoters,
-            COUNT(CASE WHEN (answers->>'q10')::numeric <= 6 THEN 1 END) as detractors
-          FROM responses r
-          WHERE r.shop_id = ANY($1::text[])
-          ${dateCondition}
-        `, aggregateShopIds, ...dateParams)
+          promoters: number
+          detractors: number
+        }>>(query, aggregateShopIds, ...dateParams)
 
         const row = result[0]
-        const responseCount = Number(row?.count ?? 0)
+        const responseCount = row?.count ?? 0
 
         if (responseCount === 0) {
           return {
@@ -286,7 +287,8 @@ export async function GET(request: Request) {
         for (const [category, questions] of Object.entries(CATEGORY_MAPPING)) {
           const questionAvgs = questions.map(q => {
             const key = `avg_${q}` as keyof typeof row
-            return row[key] as number | null
+            const val = row[key]
+            return typeof val === 'number' ? val : null
           }).filter((v): v is number => v !== null)
 
           categoryScores[category] = questionAvgs.length > 0
@@ -298,15 +300,15 @@ export async function GET(request: Request) {
         const q1to9Avgs = [
           row.avg_q1, row.avg_q2, row.avg_q3, row.avg_q4, row.avg_q5,
           row.avg_q6, row.avg_q7, row.avg_q8, row.avg_q9
-        ].filter((v): v is number => v !== null)
+        ].filter((v): v is number => typeof v === 'number')
 
         const overallScore = q1to9Avgs.length > 0
           ? q1to9Avgs.reduce((a, b) => a + b, 0) / q1to9Avgs.length
           : null
 
         // Calculate eNPS
-        const promoters = Number(row.promoters ?? 0)
-        const detractors = Number(row.detractors ?? 0)
+        const promoters = row.promoters ?? 0
+        const detractors = row.detractors ?? 0
         const q10Count = promoters + detractors + (responseCount - promoters - detractors) // includes passives
         const enps = q10Count > 0
           ? Math.round(((promoters - detractors) / q10Count) * 100)
