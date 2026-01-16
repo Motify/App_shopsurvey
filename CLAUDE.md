@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ShopSurvey is an employee retention survey system for multi-store businesses (restaurants, hotels, retail, entertainment). Employees access surveys via QR codes, and admins view engagement analytics through role-based dashboards.
+ShopSurvey (BaitoSurvey) is an employee retention survey system for multi-store businesses (restaurants, hotels, retail, entertainment). Employees access surveys via QR codes, and admins view engagement analytics through role-based dashboards.
 
 ## Commands
 
 ```bash
 npm run dev          # Start development server on http://localhost:3000
-npm run build        # Build for production
+npm run build        # Build for production (includes prisma generate, db push, and seed)
 npm run start        # Start production server
 npm run lint         # Run ESLint
 npm run db:generate  # Regenerate Prisma client after schema changes
@@ -18,6 +18,11 @@ npm run db:migrate   # Create and apply database migrations
 npm run db:push      # Push schema changes without migration (dev only)
 npm run db:seed      # Seed questions and benchmark data
 ```
+
+## Default Login Credentials
+
+After running `npm run db:seed`:
+- **SysAdmin**: `admin@test.com` / `password123`
 
 ## Architecture
 
@@ -89,8 +94,47 @@ Scoring logic in `src/lib/scoring.ts` calculates category averages, overall enga
 ## Environment Variables
 
 Required in `.env`:
-- `DATABASE_URL` - PostgreSQL connection string
-- `NEXTAUTH_URL` - App URL for auth callbacks
-- `NEXTAUTH_SECRET` - JWT signing secret
+- `DATABASE_URL` - PostgreSQL connection string (add `?sslmode=require` for Railway)
+- `NEXTAUTH_URL` - Full app URL with https (e.g., `https://your-app.railway.app`)
+- `NEXTAUTH_SECRET` - JWT signing secret (generate with `openssl rand -base64 32`)
+- `NEXT_PUBLIC_APP_URL` - Same as NEXTAUTH_URL
 - `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `EMAIL_FROM` - Email service
-- `NEXT_PUBLIC_APP_URL` - Public app URL for QR codes
+- `ANTHROPIC_API_KEY` - For AI comment analysis
+- `OPENAI_API_KEY` - Alternative AI provider (optional)
+
+## Railway Deployment
+
+The app is configured for Railway deployment:
+
+1. **Build script** automatically runs:
+   - `prisma generate` - Generate Prisma client
+   - `prisma db push` - Sync database schema
+   - `npx tsx prisma/seed.ts` - Seed initial data
+   - `next build` - Build Next.js app
+
+2. **Important configuration**:
+   - `trustHost: true` is set in NextAuth for proxy compatibility
+   - Auth routes use `runtime = 'nodejs'` for bcryptjs compatibility
+   - Health check endpoint available at `/api/health`
+
+3. **Environment variables must have**:
+   - Full URLs with `https://` prefix for NEXTAUTH_URL and NEXT_PUBLIC_APP_URL
+   - A properly generated NEXTAUTH_SECRET (not placeholder text)
+
+## Reports & Analytics
+
+### Report Tabs
+- **概要 (Overview)**: Overall scores, category breakdown, eNPS, radar chart
+- **トレンド (Trend)**: 12-month score trends and eNPS history
+- **AI分析 (AI Analysis)**: AI-powered comment theme analysis (results are cached)
+- **詳細分析 (Advanced Analytics)**: Question-level stats, correlations, patterns, percentile ranking
+
+### Shop Comparison
+- Compare up to 5 shops at `/reports/compare`
+- Parent shops aggregate data from all descendant shops
+- Uses optimized SQL aggregation for performance with large datasets
+
+### Performance Optimizations
+- Database-level aggregation using raw SQL for large datasets
+- In-memory tree building for shop hierarchies
+- Client-side caching for AI analysis results between tab switches
