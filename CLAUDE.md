@@ -24,6 +24,14 @@ npm run db:seed      # Seed questions and benchmark data
 After running `npm run db:seed`:
 - **SysAdmin**: `admin@test.com` / `password123`
 
+## Security
+
+See `SECURITY.md` for comprehensive security documentation including:
+- Rate limiting configuration per endpoint
+- Audit logging for all admin actions
+- Password policy requirements
+- Session expiry settings
+
 ## Architecture
 
 ### Tech Stack
@@ -51,6 +59,8 @@ src/
     ├── prisma.ts        # Prisma client singleton
     ├── scoring.ts       # Survey scoring algorithms, risk levels, eNPS
     ├── access.ts        # Shop access control (full vs limited admin access)
+    ├── rate-limit.ts    # Rate limiting for API endpoints
+    ├── audit.ts         # Audit logging for security events
     ├── mailgun.ts       # Email service
     └── qrcode.ts        # QR code generation
 ```
@@ -71,11 +81,17 @@ src/
 
 ### Survey System
 11 questions covering 8 categories plus eNPS and free text:
-- Q1-Q9: 5-point scale (Q5 is reverse-scored)
-- Q10: 0-10 eNPS scale
-- Q11: Free text comments
+- Q1-Q9: 5-point scale (Q5 is reverse-scored: high score = negative sentiment)
+- Q10: 0-10 eNPS scale (0-6 detractors, 7-8 passive, 9-10 promoters)
+- Q11-Q12: Free text comments (positive feedback, improvement suggestions)
 
 Scoring logic in `src/lib/scoring.ts` calculates category averages, overall engagement, eNPS (promoters - detractors), and risk levels (CRITICAL/WARNING/CAUTION/STABLE/EXCELLENT).
+
+### Survey Email Distribution
+Admins can send survey invitations via email:
+- `SurveyBatch`: Groups invitations sent at once (manual or CSV import)
+- `SurveyInvite`: Individual invitation with unique token, tracks open/completion
+- Survey links use token-based URLs for tracking (separate from QR code access)
 
 ### Authentication Flow
 1. SysAdmin creates company and initial admin
@@ -90,6 +106,9 @@ Scoring logic in `src/lib/scoring.ts` calculates category averages, overall enga
 - UI components follow shadcn/ui patterns with `cn()` utility for className merging
 - API routes return JSON with consistent error shapes
 - All database column names use snake_case (mapped via `@map()`)
+- Rate limit sensitive endpoints using `checkRateLimit()` from `src/lib/rate-limit.ts`
+- Log security events using `logAuditEvent()` from `src/lib/audit.ts`
+- AI analysis results cached in `ResponseAnalysis` table (keyed by shopId + date range)
 
 ## Environment Variables
 
