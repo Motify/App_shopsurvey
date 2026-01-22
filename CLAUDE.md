@@ -80,18 +80,56 @@ src/
 - `/survey/[qrCode]` - Public survey form accessed via QR code
 
 ### Survey System
-11 questions covering 8 categories plus eNPS and free text:
-- Q1-Q9: 5-point scale (Q5 is reverse-scored: high score = negative sentiment)
-- Q10: 0-10 eNPS scale (0-6 detractors, 7-8 passive, 9-10 promoters)
-- Q11-Q12: Free text comments (positive feedback, improvement suggestions)
+The survey has 12 questions organized as follows:
 
-Scoring logic in `src/lib/scoring.ts` calculates category averages, overall engagement, eNPS (promoters - detractors), and risk levels (CRITICAL/WARNING/CAUTION/STABLE/EXCELLENT).
+**8 Driver Dimensions (Q1-Q9, 1-5 scale):**
+- Q1-Q2: Manager & Leadership (MANAGER_LEADERSHIP)
+- Q3: Schedule & Hours (SCHEDULE_HOURS)
+- Q4: Teamwork (TEAMWORK)
+- Q5: Workload & Staffing (WORKLOAD_STAFFING) - *reverse scored*
+- Q6: Respect & Recognition (RESPECT_RECOGNITION)
+- Q7: Pay & Benefits (PAY_BENEFITS)
+- Q8: Work Environment (WORK_ENVIRONMENT)
+- Q9: Skills & Growth (SKILLS_GROWTH)
+
+**Outcome Measures:**
+- Q10: Retention Intention (1-5 scale, RETENTION_INTENTION) - outcome measure
+- Q11: eNPS (0-10 scale, ENPS) - stored in `Response.enpsScore`
+  - 0-6: Detractors, 7-8: Passives, 9-10: Promoters
+- Q12: Free text improvement suggestions - stored in `Response.improvementText`
+
+Scoring logic in `src/lib/scoring.ts` calculates:
+- 8-dimension driver scores (radar chart)
+- Retention intention outcome score
+- eNPS (% promoters - % detractors)
+- Risk levels (CRITICAL/WARNING/CAUTION/STABLE/EXCELLENT)
+
+### Route Protection
+Middleware at `src/middleware.ts` handles authentication:
+- Public: `/`, `/login`, `/setup-password`, `/forgot-password`, `/survey/*`
+- Admin routes (`/dashboard`, `/shops`, `/reports`, `/admins`): require `admin` or `sysadmin` role
+- SysAdmin routes (`/sysadmin/*`, `/companies/*`): require `sysadmin` role only
+- API routes handle their own authorization
 
 ### Survey Email Distribution
 Admins can send survey invitations via email:
 - `SurveyBatch`: Groups invitations sent at once (manual or CSV import)
 - `SurveyInvite`: Individual invitation with unique token, tracks open/completion
 - Survey links use token-based URLs for tracking (separate from QR code access)
+
+### CSV Import
+- **Admins**: `/api/admins/import` - bulk import company admins
+- **Shops**: `/api/shops/import` - bulk import shop locations
+- Max file size: 10 MB
+
+### Identity Escrow System
+Allows respondents to optionally provide encrypted contact information for follow-up on serious concerns:
+- **Encryption**: AES-256-GCM encryption via `src/lib/encryption.ts`
+- **Content Flagging**: Auto-detection of harassment, safety, crisis, and discrimination keywords via `src/lib/content-flagging.ts`
+- **Response fields**: `encryptedIdentity`, `identityConsent`, `flagged`, `flagReason`
+- **Access control**: Only SysAdmin can reveal identities, with audit logging
+- **SysAdmin pages**: `/flagged` (flagged responses), `/identity-logs` (access audit trail)
+- **Admin dashboard**: Shows count of flagged responses with contact prompt
 
 ### Authentication Flow
 1. SysAdmin creates company and initial admin
@@ -120,6 +158,7 @@ Required in `.env`:
 - `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `EMAIL_FROM` - Email service
 - `ANTHROPIC_API_KEY` - For AI comment analysis
 - `OPENAI_API_KEY` - Alternative AI provider (optional)
+- `IDENTITY_ENCRYPTION_KEY` - 32-byte base64 key for identity encryption (generate with `openssl rand -base64 32`)
 
 ## Railway Deployment
 

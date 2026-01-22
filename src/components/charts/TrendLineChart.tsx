@@ -36,7 +36,7 @@ const CATEGORY_COLORS: Record<CategoryKey, string> = {
   RESPECT_RECOGNITION: '#8b5cf6',
   PAY_BENEFITS: '#ec4899',
   WORK_ENVIRONMENT: '#06b6d4',
-  RETENTION_INTENT: '#84cc16',
+  SKILLS_GROWTH: '#84cc16',
 }
 
 export function TrendLineChart({

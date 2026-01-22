@@ -31,8 +31,8 @@ async function getDescendantShopIds(shopId: string): Promise<string[]> {
 }
 
 // Group responses by month
-function groupResponsesByMonth(responses: { answers: unknown; submittedAt: Date }[]): Map<string, { answers: unknown; submittedAt: Date }[]> {
-  const grouped = new Map<string, { answers: unknown; submittedAt: Date }[]>()
+function groupResponsesByMonth(responses: { answers: unknown; enpsScore?: number | null; submittedAt: Date }[]): Map<string, { answers: unknown; enpsScore?: number | null; submittedAt: Date }[]> {
+  const grouped = new Map<string, { answers: unknown; enpsScore?: number | null; submittedAt: Date }[]>()
 
   for (const response of responses) {
     const date = new Date(response.submittedAt)
@@ -50,7 +50,7 @@ function groupResponsesByMonth(responses: { answers: unknown; submittedAt: Date 
 // GET /api/reports/shop/[id]/trend - Get trend data for a shop
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -59,7 +59,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: shopId } = params
+    const { id: shopId } = await params
     const { searchParams } = new URL(request.url)
     const months = parseInt(searchParams.get('months') || '12', 10)
     const includeChildren = searchParams.get('includeChildren') === 'true'
@@ -111,7 +111,7 @@ export async function GET(
         shopId: { in: shopIds },
         submittedAt: { gte: startDate },
       },
-      select: { answers: true, submittedAt: true },
+      select: { answers: true, enpsScore: true, submittedAt: true },
       orderBy: { submittedAt: 'asc' },
     })
 
@@ -125,7 +125,10 @@ export async function GET(
         const answers = monthResponses.map(r => r.answers as ResponseAnswers)
         const categoryScores = calculateAllCategoryScores(answers)
         const overallScore = calculateOverallScore(answers)
-        const enpsResult = calculateENPS(answers)
+        const enpsResult = calculateENPS(monthResponses.map(r => ({
+          answers: r.answers as ResponseAnswers,
+          enpsScore: r.enpsScore,
+        })))
 
         return {
           month,

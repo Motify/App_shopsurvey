@@ -38,7 +38,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   RESPECT_RECOGNITION: '尊重・承認',
   PAY_BENEFITS: '給与・待遇',
   WORK_ENVIRONMENT: '職場環境',
-  RETENTION_INTENT: '定着意向',
+  SKILLS_GROWTH: 'スキル・成長',
 }
 
 export function ComparisonRadarChart({ shops, benchmark }: ComparisonRadarChartProps) {

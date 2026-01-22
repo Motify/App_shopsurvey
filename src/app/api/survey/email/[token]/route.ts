@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma'
 // GET /api/survey/email/[token] - Get survey data for email invite token
 export async function GET(
   request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const { token } = params
+    const { token } = await params
 
     // Find the survey invite
     const invite = await prisma.surveyInvite.findUnique({
@@ -57,6 +57,16 @@ export async function GET(
     // Get survey questions
     const questions = await prisma.question.findMany({
       orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        order: true,
+        textJa: true,
+        textEn: true,
+        category: true,
+        isReversed: true,
+        isOutcome: true,
+        scale: true,
+      },
     })
 
     return NextResponse.json({

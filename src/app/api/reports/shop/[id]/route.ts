@@ -6,6 +6,7 @@ import {
   getCategoryRiskLevel,
   getConfidenceLevel,
   getENPSRiskLevel,
+  getRetentionIntentionRiskLevel,
   CATEGORY_LABELS,
   CATEGORY_MAPPING,
   CategoryKey,
@@ -66,10 +67,11 @@ interface AggregationResult {
   avg_q7: number | null
   avg_q8: number | null
   avg_q9: number | null
-  avg_q10: number | null
-  promoters: number
-  passives: number
-  detractors: number
+  avg_q10: number | null  // Retention Intention (1-5 scale)
+  avg_enps: number | null // eNPS score (0-10 scale) from enps_score field
+  promoters: number       // eNPS promoters (9-10)
+  passives: number        // eNPS passives (7-8)
+  detractors: number      // eNPS detractors (0-6)
 }
 
 // Calculate scores from aggregation result
@@ -82,6 +84,7 @@ function calculateScoresFromAggregation(row: AggregationResult | undefined) {
         Object.keys(CATEGORY_MAPPING).map(k => [k, null])
       ) as Record<CategoryKey, number | null>,
       overallScore: null,
+      retentionIntention: null,
       enpsResult: {
         score: null,
         promoters: 0,
@@ -119,28 +122,32 @@ function calculateScoresFromAggregation(row: AggregationResult | undefined) {
     ? q1to9Avgs.reduce((a, b) => a + b, 0) / q1to9Avgs.length
     : null
 
-  // Calculate eNPS
+  // Calculate eNPS (from enps_score field)
   const promoters = row.promoters ?? 0
   const passives = row.passives ?? 0
   const detractors = row.detractors ?? 0
-  const totalWithQ10 = promoters + passives + detractors
+  const totalWithENPS = promoters + passives + detractors
 
-  const enpsScore = totalWithQ10 > 0
-    ? Math.round(((promoters - detractors) / totalWithQ10) * 100)
+  const enpsScore = totalWithENPS > 0
+    ? Math.round(((promoters - detractors) / totalWithENPS) * 100)
     : null
 
-  const promoterPercentage = totalWithQ10 > 0 ? (promoters / totalWithQ10) * 100 : null
-  const detractorPercentage = totalWithQ10 > 0 ? (detractors / totalWithQ10) * 100 : null
+  const promoterPercentage = totalWithENPS > 0 ? (promoters / totalWithENPS) * 100 : null
+  const detractorPercentage = totalWithENPS > 0 ? (detractors / totalWithENPS) * 100 : null
+
+  // Get retention intention (Q10 average)
+  const retentionIntention = typeof row.avg_q10 === 'number' ? row.avg_q10 : null
 
   return {
     categoryScores: categoryScores as Record<CategoryKey, number | null>,
     overallScore,
+    retentionIntention,
     enpsResult: {
       score: enpsScore,
       promoters,
       passives,
       detractors,
-      totalResponses: totalWithQ10,
+      totalResponses: totalWithENPS,
       promoterPercentage,
       detractorPercentage,
     },
@@ -179,9 +186,10 @@ async function runAggregationQuery(
       AVG((answers->>'q8')::float8)::float8 as avg_q8,
       AVG((answers->>'q9')::float8)::float8 as avg_q9,
       AVG((answers->>'q10')::float8)::float8 as avg_q10,
-      COUNT(CASE WHEN (answers->>'q10')::int >= 9 THEN 1 END)::int as promoters,
-      COUNT(CASE WHEN (answers->>'q10')::int >= 7 AND (answers->>'q10')::int <= 8 THEN 1 END)::int as passives,
-      COUNT(CASE WHEN (answers->>'q10')::int <= 6 THEN 1 END)::int as detractors
+      AVG(enps_score::float8)::float8 as avg_enps,
+      COUNT(CASE WHEN enps_score >= 9 THEN 1 END)::int as promoters,
+      COUNT(CASE WHEN enps_score >= 7 AND enps_score <= 8 THEN 1 END)::int as passives,
+      COUNT(CASE WHEN enps_score IS NOT NULL AND enps_score <= 6 THEN 1 END)::int as detractors
     FROM responses r
     WHERE r.shop_id = ANY($1::text[])
     ${dateCondition}
@@ -193,7 +201,7 @@ async function runAggregationQuery(
 // GET /api/reports/shop/[id] - Get report for a shop
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -202,7 +210,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: shopId } = params
+    const { id: shopId } = await params
     const { searchParams } = new URL(request.url)
     const includeChildren = searchParams.get('includeChildren') === 'true'
 
@@ -306,6 +314,7 @@ export async function GET(
       : null
     const confidence = getConfidenceLevel(currentScores.responseCount)
     const enpsRisk = getENPSRiskLevel(currentScores.enpsResult.score)
+    const retentionRisk = getRetentionIntentionRiskLevel(currentScores.retentionIntention)
 
     // Fetch comparison period if requested
     let comparison = null
@@ -468,6 +477,10 @@ export async function GET(
       benchmarkOverall,
       categoryBreakdown,
       confidence,
+      retentionIntention: {
+        score: currentScores.retentionIntention,
+        risk: retentionRisk,
+      },
       enps: {
         score: currentScores.enpsResult.score,
         risk: enpsRisk,

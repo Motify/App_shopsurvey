@@ -6,7 +6,7 @@ import { getAccessibleShopIds } from '@/lib/access'
 // GET /api/survey/history/[batchId] - Get survey batch detail
 export async function GET(
   request: Request,
-  { params }: { params: { batchId: string } }
+  { params }: { params: Promise<{ batchId: string }> }
 ) {
   try {
     const session = await auth()
@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { batchId } = params
+    const { batchId } = await params
 
     // Get the batch
     const batch = await prisma.surveyBatch.findUnique({

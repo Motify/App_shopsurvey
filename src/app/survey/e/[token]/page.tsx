@@ -11,8 +11,9 @@ interface Question {
   textJa: string
   textEn: string
   category: string
-  questionType: 'SCALE_5' | 'SCALE_11' | 'FREE_TEXT'
-  isReverse: boolean
+  isReversed: boolean
+  isOutcome: boolean
+  scale: string  // "1-5" or "0-10"
 }
 
 interface SurveyData {
@@ -25,7 +26,7 @@ interface SurveyData {
   questions: Question[]
 }
 
-// Q1-Q9: 5-point scale
+// Q1-Q10: 5-point scale (Q1-Q9 drivers + Q10 retention intention)
 const SCALE_5_OPTIONS = [
   { value: 1, label: '全くそう思わない', labelEn: 'Strongly Disagree' },
   { value: 2, label: 'そう思わない', labelEn: 'Disagree' },
@@ -34,8 +35,14 @@ const SCALE_5_OPTIONS = [
   { value: 5, label: 'とてもそう思う', labelEn: 'Strongly Agree' },
 ]
 
-// Q10: eNPS 0-10 scale
+// Q11: eNPS 0-10 scale
 const NPS_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+// Helper to determine question type from the Question model
+const getQuestionType = (question: Question): 'SCALE_5' | 'SCALE_11' | 'FREE_TEXT' => {
+  if (question.scale === '0-10') return 'SCALE_11'
+  return 'SCALE_5'
+}
 
 
 export default function EmailSurveyPage({
@@ -51,10 +58,15 @@ export default function EmailSurveyPage({
   const [error, setError] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, number>>({})
-  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({})
+  const [enpsAnswer, setEnpsAnswer] = useState<number | null>(null)  // Q11 eNPS stored separately
+  const [improvementText, setImprovementText] = useState('')  // Q12 free text
   const [submitting, setSubmitting] = useState(false)
   const [showValidation, setShowValidation] = useState(false)
   const [startTime] = useState(Date.now())
+
+  // Identity escrow fields
+  const [identity, setIdentity] = useState('')
+  const [identityConsent, setIdentityConsent] = useState(false)
 
   useEffect(() => {
     fetchSurvey()
@@ -87,26 +99,38 @@ export default function EmailSurveyPage({
     }))
   }
 
-  const handleTextChange = (questionId: string, value: string) => {
-    setTextAnswers((prev) => ({
-      ...prev,
-      [questionId]: value,
-    }))
+  const handleEnpsChange = (value: number) => {
+    setEnpsAnswer(value)
   }
 
-  // Check if required questions are answered (Q1-Q10, Q11 is optional)
+  // Get required scale questions (Q1-Q10, all 1-5 scale)
+  // Q11 (eNPS 0-10) is also required
   const getRequiredQuestions = () => {
     if (!surveyData) return []
-    return surveyData.questions.filter((q) => q.questionType !== 'FREE_TEXT')
+    // All questions from the questions table are required (Q1-Q11)
+    return surveyData.questions
   }
 
+  // Check completion: all Q1-Q10 answered in answers + Q11 (eNPS) answered
   const isComplete = surveyData
-    ? getRequiredQuestions().every((q) => answers[q.id] !== undefined)
+    ? surveyData.questions.every((q) => {
+        const questionType = getQuestionType(q)
+        if (questionType === 'SCALE_11') {
+          return enpsAnswer !== null
+        }
+        return answers[q.id] !== undefined
+      })
     : false
 
   const getUnansweredQuestions = () => {
     if (!surveyData) return []
-    return getRequiredQuestions().filter((q) => answers[q.id] === undefined)
+    return surveyData.questions.filter((q) => {
+      const questionType = getQuestionType(q)
+      if (questionType === 'SCALE_11') {
+        return enpsAnswer === null
+      }
+      return answers[q.id] === undefined
+    })
   }
 
   const handleSubmit = async () => {
@@ -126,29 +150,29 @@ export default function EmailSurveyPage({
     setSubmitting(true)
 
     try {
-      // Convert answers to q1, q2, ... format
+      // Convert answers to q1, q2, ... format (Q1-Q10 are 1-5 scale)
       const formattedAnswers: Record<string, number> = {}
       surveyData.questions.forEach((q) => {
-        if (q.questionType !== 'FREE_TEXT' && answers[q.id] !== undefined) {
+        const questionType = getQuestionType(q)
+        // Only include 1-5 scale questions in answers (not Q11 eNPS)
+        if (questionType === 'SCALE_5' && answers[q.id] !== undefined) {
           formattedAnswers[`q${q.order}`] = answers[q.id]
         }
       })
-
-      // Get the free text comment (Q11)
-      const freeTextQuestion = surveyData.questions.find(
-        (q) => q.questionType === 'FREE_TEXT'
-      )
-      const comment = freeTextQuestion ? textAnswers[freeTextQuestion.id] : undefined
 
       const response = await fetch('/api/responses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shopId: surveyData.shop.id,
-          answers: formattedAnswers,
-          comment: comment?.trim() || null,
+          answers: formattedAnswers,           // Q1-Q10 (1-5 scale)
+          enpsScore: enpsAnswer,               // Q11 (0-10 scale) stored separately
+          improvementText: improvementText.trim() || null,  // Q12 free text
           timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
           inviteToken: token, // Pass the invite token to link the response
+          // Identity escrow fields
+          identity: identityConsent && identity.trim() ? identity.trim() : null,
+          identityConsent,
         }),
       })
 
@@ -196,7 +220,14 @@ export default function EmailSurveyPage({
   if (!surveyData) return null
 
   const requiredQuestions = getRequiredQuestions()
-  const answeredCount = requiredQuestions.filter((q) => answers[q.id] !== undefined).length
+  // Count answered: scale_5 questions from answers + eNPS
+  const answeredCount = requiredQuestions.filter((q) => {
+    const questionType = getQuestionType(q)
+    if (questionType === 'SCALE_11') {
+      return enpsAnswer !== null
+    }
+    return answers[q.id] !== undefined
+  }).length
   const totalRequired = requiredQuestions.length
   const progressPercent = (answeredCount / totalRequired) * 100
 
@@ -228,14 +259,11 @@ export default function EmailSurveyPage({
       {/* Questions */}
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {surveyData.questions.map((question, index) => {
-          const isAnswered =
-            question.questionType === 'FREE_TEXT'
-              ? true // Free text is always considered "answered" (optional)
-              : answers[question.id] !== undefined
-          const isUnanswered =
-            showValidation &&
-            question.questionType !== 'FREE_TEXT' &&
-            !answers[question.id]
+          const questionType = getQuestionType(question)
+          const isAnswered = questionType === 'SCALE_11'
+            ? enpsAnswer !== null
+            : answers[question.id] !== undefined
+          const isUnanswered = showValidation && !isAnswered
 
           return (
             <div
@@ -244,19 +272,19 @@ export default function EmailSurveyPage({
               className={cn(
                 'bg-white rounded-xl p-4 shadow-sm border transition-all',
                 isUnanswered && 'border-red-300 ring-2 ring-red-100',
-                isAnswered && question.questionType !== 'FREE_TEXT' && 'border-emerald-200'
+                isAnswered && 'border-emerald-200'
               )}
             >
               <div className="flex items-start gap-3 mb-4">
                 <span
                   className={cn(
                     'flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold',
-                    isAnswered && question.questionType !== 'FREE_TEXT'
+                    isAnswered
                       ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-slate-100 text-slate-500'
                   )}
                 >
-                  {isAnswered && question.questionType !== 'FREE_TEXT' ? (
+                  {isAnswered ? (
                     <CheckCircle2 className="h-4 w-4" />
                   ) : (
                     index + 1
@@ -265,9 +293,6 @@ export default function EmailSurveyPage({
                 <div className="flex-1">
                   <p className="text-slate-900 font-medium leading-relaxed">
                     {question.textJa}
-                    {question.questionType === 'FREE_TEXT' && (
-                      <span className="text-slate-400 text-sm ml-2">（任意）</span>
-                    )}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
                     {question.textEn}
@@ -275,8 +300,8 @@ export default function EmailSurveyPage({
                 </div>
               </div>
 
-              {/* Q1-Q9: 5-point scale */}
-              {question.questionType === 'SCALE_5' && (
+              {/* Q1-Q10: 5-point scale */}
+              {questionType === 'SCALE_5' && (
                 <>
                   <div className="grid grid-cols-5 gap-1">
                     {SCALE_5_OPTIONS.map((option) => (
@@ -305,18 +330,18 @@ export default function EmailSurveyPage({
                 </>
               )}
 
-              {/* Q10: eNPS 0-10 scale */}
-              {question.questionType === 'SCALE_11' && (
+              {/* Q11: eNPS 0-10 scale */}
+              {questionType === 'SCALE_11' && (
                 <>
                   <div className="grid grid-cols-11 gap-1">
                     {NPS_OPTIONS.map((value) => (
                       <button
                         key={value}
                         type="button"
-                        onClick={() => handleAnswerChange(question.id, value)}
+                        onClick={() => handleEnpsChange(value)}
                         className={cn(
                           'flex flex-col items-center py-3 px-1 rounded-lg border-2 transition-all',
-                          answers[question.id] === value
+                          enpsAnswer === value
                             ? value >= 9
                               ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                               : value >= 7
@@ -350,17 +375,6 @@ export default function EmailSurveyPage({
                 </>
               )}
 
-              {/* Q11: Free text */}
-              {question.questionType === 'FREE_TEXT' && (
-                <textarea
-                  value={textAnswers[question.id] || ''}
-                  onChange={(e) => handleTextChange(question.id, e.target.value)}
-                  placeholder="ご意見・ご要望をお聞かせください（任意）"
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
-                  rows={4}
-                />
-              )}
-
               {isUnanswered && (
                 <p className="text-red-500 text-xs mt-2 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
@@ -370,6 +384,65 @@ export default function EmailSurveyPage({
             </div>
           )
         })}
+
+        {/* Q12: Free text improvement suggestions (optional) */}
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+          <div className="flex items-start gap-3 mb-4">
+            <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-slate-100 text-slate-500">
+              12
+            </span>
+            <div className="flex-1">
+              <p className="text-slate-900 font-medium leading-relaxed">
+                職場環境の改善について、ご意見やご要望がありましたらお聞かせください
+                <span className="text-slate-400 text-sm ml-2">（任意）</span>
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Please share any feedback or suggestions for workplace improvement (optional)
+              </p>
+            </div>
+          </div>
+          <textarea
+            value={improvementText}
+            onChange={(e) => setImprovementText(e.target.value)}
+            placeholder="改善してほしいこと、良かった点などをお聞かせください..."
+            className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+            rows={4}
+          />
+        </div>
+
+        {/* Identity Escrow Section */}
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+          <h3 className="font-medium text-slate-900 mb-3">
+            【任意】連絡先の入力
+          </h3>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={identityConsent}
+              onChange={(e) => {
+                setIdentityConsent(e.target.checked)
+                if (!e.target.checked) setIdentity('')
+              }}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className="text-sm text-slate-600 leading-relaxed">
+              この情報は通常、会社に開示されません。
+              ハラスメントや安全に関わる深刻な報告があった場合のみ、
+              第三者機関の判断により本人確認に使用される可能性があります。
+            </span>
+          </label>
+
+          {identityConsent && (
+            <input
+              type="text"
+              placeholder="メールアドレスまたは社員番号"
+              value={identity}
+              onChange={(e) => setIdentity(e.target.value)}
+              className="w-full mt-3 p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            />
+          )}
+        </div>
 
         {/* Submit button */}
         <div className="pt-4 pb-8">

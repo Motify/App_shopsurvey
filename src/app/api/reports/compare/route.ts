@@ -243,8 +243,9 @@ export async function GET(request: Request) {
             AVG((answers->>'q8')::float8)::float8 as avg_q8,
             AVG((answers->>'q9')::float8)::float8 as avg_q9,
             AVG((answers->>'q10')::float8)::float8 as avg_q10,
-            COUNT(CASE WHEN (answers->>'q10')::int >= 9 THEN 1 END)::int as promoters,
-            COUNT(CASE WHEN (answers->>'q10')::int <= 6 THEN 1 END)::int as detractors
+            COUNT(CASE WHEN enps_score >= 9 THEN 1 END)::int as promoters,
+            COUNT(CASE WHEN enps_score IS NOT NULL AND enps_score <= 6 THEN 1 END)::int as detractors,
+            COUNT(CASE WHEN enps_score IS NOT NULL THEN 1 END)::int as enps_total
           FROM responses r
           WHERE r.shop_id = ANY($1::text[])
           ${dateCondition}
@@ -263,6 +264,7 @@ export async function GET(request: Request) {
           avg_q10: number | null
           promoters: number
           detractors: number
+          enps_total: number
         }>>(query, aggregateShopIds, ...dateParams)
 
         const row = result[0]
@@ -306,12 +308,12 @@ export async function GET(request: Request) {
           ? q1to9Avgs.reduce((a, b) => a + b, 0) / q1to9Avgs.length
           : null
 
-        // Calculate eNPS
+        // Calculate eNPS (from enps_score field)
         const promoters = row.promoters ?? 0
         const detractors = row.detractors ?? 0
-        const q10Count = promoters + detractors + (responseCount - promoters - detractors) // includes passives
-        const enps = q10Count > 0
-          ? Math.round(((promoters - detractors) / q10Count) * 100)
+        const enpsTotal = row.enps_total ?? 0
+        const enps = enpsTotal > 0
+          ? Math.round(((promoters - detractors) / enpsTotal) * 100)
           : null
 
         return {
@@ -336,7 +338,8 @@ export async function GET(request: Request) {
     let benchmarkCount = 0
     for (const b of benchmarks) {
       benchmarkMap[b.category] = b.avgScore
-      if (b.category !== 'ENPS' && b.category !== 'FREE_TEXT') {
+      // Exclude ENPS and outcome measures from overall benchmark calculation
+      if (b.category !== 'ENPS' && b.category !== 'RETENTION_INTENTION') {
         benchmarkOverall += b.avgScore
         benchmarkCount++
       }

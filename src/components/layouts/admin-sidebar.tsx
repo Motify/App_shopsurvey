@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, Store, Users, Send, BarChart3, Building2, LogOut } from 'lucide-react'
+import { LayoutDashboard, Store, Users, Send, BarChart3, Building2, LogOut, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
@@ -27,6 +27,7 @@ export function AdminSidebar({ user, companyName, isFullAccess }: AdminSidebarPr
     { name: '管理者', href: '/admins', icon: Users, show: isFullAccess },
     { name: 'レポート', href: '/reports', icon: BarChart3, show: true },
     { name: '全社レポート', href: '/reports/company', icon: Building2, show: isFullAccess },
+    { name: '企業ランキング', href: '/reports/ranking', icon: Trophy, show: true },
   ]
 
   return (

@@ -27,7 +27,7 @@ async function getDescendantShopIds(shopId: string): Promise<string[]> {
 // GET /api/reports/shop/[id]/analysis - Get AI analysis for shop responses
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -36,7 +36,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: shopId } = params
+    const { id: shopId } = await params
     const { searchParams } = new URL(request.url)
     const includeChildren = searchParams.get('includeChildren') === 'true'
     const forceRefresh = searchParams.get('refresh') === 'true'

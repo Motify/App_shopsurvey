@@ -100,13 +100,16 @@ export async function GET(request: Request) {
         shop: { companyId: admin.companyId },
         ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
       },
-      select: { answers: true },
+      select: { answers: true, enpsScore: true },
     })
 
     const allAnswers = allResponses.map(r => r.answers as Record<string, number>)
     const overallScore = calculateOverallScore(allAnswers)
     const categoryScores = calculateAllCategoryScores(allAnswers)
-    const enpsResult = calculateENPS(allAnswers)
+    const enpsResult = calculateENPS(allResponses.map(r => ({
+      answers: r.answers as Record<string, number>,
+      enpsScore: r.enpsScore,
+    })))
 
     // Get benchmarks
     const benchmarks = await prisma.benchmark.findMany({

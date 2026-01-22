@@ -46,15 +46,9 @@ enum QuestionCategory {
   RESPECT_RECOGNITION      // 尊重・承認 (Q6)
   PAY_BENEFITS             // 給与・待遇 (Q7)
   WORK_ENVIRONMENT         // 職場環境 (Q8)
-  RETENTION_INTENT         // 定着意向 (Q9)
-  ENPS                     // eNPS (Q10 - 0-10 scale)
-  FREE_TEXT                // 自由記述 (Q11)
-}
-
-enum QuestionType {
-  SCALE_5                  // 1-5 scale questions
-  SCALE_11                 // 0-10 scale for eNPS
-  FREE_TEXT                // Open-ended text
+  SKILLS_GROWTH            // スキル・成長 (Q9)
+  RETENTION_INTENTION      // 定着意向 (Q10 - outcome)
+  ENPS                     // eNPS (Q11 - 0-10 scale outcome)
 }
 
 // ============================================
@@ -68,6 +62,8 @@ model SysAdmin {
   name         String
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+
+  identityAccessLogs IdentityAccessLog[]
 
   @@map("sys_admins")
 }
@@ -166,13 +162,14 @@ model AdminShopAssignment {
 // ============================================
 
 model Question {
-  id            String           @id @default(cuid())
-  order         Int              @unique
-  textJa        String           @map("text_ja")
-  textEn        String           @map("text_en")
-  category      QuestionCategory
-  questionType  QuestionType     @default(SCALE_5) @map("question_type")
-  isReverse     Boolean          @default(false) @map("is_reverse")  // For Q5 where high = bad
+  id         String           @id @default(cuid())
+  order      Int              @unique
+  textJa     String           @map("text_ja")
+  textEn     String           @map("text_en")
+  category   QuestionCategory
+  isReversed Boolean          @default(false) @map("is_reversed")  // For Q5 where high = bad
+  isOutcome  Boolean          @default(false) @map("is_outcome")   // For Q10, Q11 (outcome measures)
+  scale      String           @default("1-5")  // "1-5" or "0-10" for eNPS
 
   @@map("questions")
 }
@@ -184,17 +181,27 @@ model Question {
 model Response {
   id              String   @id @default(cuid())
   shopId          String   @map("shop_id")
-  answers         Json     // q1-q9: 1-5 scores, q10: 0-10 eNPS score
+  answers         Json     // { q1: 4, q2: 3, ... q10: 4 } - Q1 to Q10 (1-5 scale)
+  enpsScore       Int?     @map("enps_score")  // Q11 (0-10 scale) - stored separately
   comment         String?  // Legacy: Free text comment (kept for backward compatibility)
-  positiveText    String?  @map("positive_text")    // Q11: What makes you want to continue working here?
-  improvementText String?  @map("improvement_text") // Q12: What would you like to see improved?
+  positiveText    String?  @map("positive_text")    // Positive feedback
+  improvementText String?  @map("improvement_text") // Q12: Free text improvement suggestions
+
+  // Identity escrow fields
+  encryptedIdentity String?  @map("encrypted_identity")  // Encrypted email or employee ID
+  identityConsent   Boolean  @default(false) @map("identity_consent")  // Did they consent?
+  flagged           Boolean  @default(false)  // Auto-flagged for concerning content
+  flagReason        String?  @map("flag_reason")  // Why it was flagged
+
   submittedAt     DateTime @default(now()) @map("submitted_at")
 
-  shop         Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  surveyInvite SurveyInvite?
+  shop              Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  surveyInvite      SurveyInvite?
+  identityAccessLogs IdentityAccessLog[]
 
   @@index([shopId])
   @@index([submittedAt])
+  @@index([flagged])
   @@map("responses")
 }
 
@@ -315,4 +322,25 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================
+// IDENTITY ACCESS LOG (for escrow system)
+// ============================================
+
+model IdentityAccessLog {
+  id          String   @id @default(cuid())
+  responseId  String   @map("response_id")
+  sysAdminId  String   @map("sys_admin_id")
+  reason      String   // Why access was needed
+  requestedBy String   @map("requested_by")  // Company/person who requested
+  accessedAt  DateTime @default(now()) @map("accessed_at")
+
+  response Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  sysAdmin SysAdmin @relation(fields: [sysAdminId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
+  @@index([sysAdminId])
+  @@index([accessedAt])
+  @@map("identity_access_logs")
 }

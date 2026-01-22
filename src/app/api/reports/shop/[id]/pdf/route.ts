@@ -70,7 +70,7 @@ function getRiskLabel(score: number): string {
 // GET /api/reports/shop/[id]/pdf - Generate PDF report
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -79,7 +79,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: shopId } = params
+    const { id: shopId } = await params
     const { searchParams } = new URL(request.url)
     const includeChildren = searchParams.get('includeChildren') === 'true'
 
@@ -127,14 +127,17 @@ export async function GET(
         shopId: { in: shopIds },
         ...(Object.keys(dateFilter).length > 0 ? { submittedAt: dateFilter } : {}),
       },
-      select: { answers: true, comment: true, submittedAt: true },
+      select: { answers: true, enpsScore: true, comment: true, submittedAt: true },
       orderBy: { submittedAt: 'desc' },
     })
 
     const answers = responses.map(r => r.answers as ResponseAnswers)
     const categoryScores = calculateAllCategoryScores(answers)
     const overallScore = calculateOverallScore(answers)
-    const enpsResult = calculateENPS(answers)
+    const enpsResult = calculateENPS(responses.map(r => ({
+      answers: r.answers as ResponseAnswers,
+      enpsScore: r.enpsScore,
+    })))
 
     // Get benchmarks
     const benchmarks = await prisma.benchmark.findMany({

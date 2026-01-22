@@ -144,6 +144,15 @@ export default async function DashboardPage() {
     NO_DATA: shopScores.filter(s => s.risk === null).length,
   }
 
+  // Count flagged responses for the company (important feedback alert)
+  const accessibleShopIds = accessibleShops.map(s => s.id)
+  const flaggedCount = await prisma.response.count({
+    where: {
+      shopId: { in: accessibleShopIds },
+      flagged: true,
+    },
+  })
+
   const getRiskBadgeClass = (level: string) => {
     switch (level) {
       case 'CRITICAL':
@@ -231,6 +240,31 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Flagged Responses Alert */}
+      {flaggedCount > 0 && (
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardContent className="flex items-center gap-4 py-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-orange-900">
+                {flaggedCount}件の重要なフィードバックがあります
+              </p>
+              <p className="text-sm text-orange-700">
+                詳細は運営事務局にお問い合わせください
+              </p>
+            </div>
+            <a
+              href="mailto:support@techcrew.co.jp"
+              className="inline-flex items-center justify-center rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 transition-colors"
+            >
+              お問い合わせ
+            </a>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Lowest Scoring Shops */}

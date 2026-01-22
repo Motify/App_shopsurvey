@@ -43,6 +43,7 @@ import {
   TrendingUp,
   BarChart3,
   Lightbulb,
+  Heart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CATEGORY_LABELS, CategoryKey, REVERSE_SCORED_CATEGORIES } from '@/lib/scoring'
@@ -94,6 +95,11 @@ interface ComparisonData {
   }
 }
 
+interface RetentionIntentionData {
+  score: number | null
+  risk: { level: string; label: string; color: string }
+}
+
 interface ReportData {
   shop: {
     id: string
@@ -110,6 +116,7 @@ interface ReportData {
   benchmarkOverall: number | null
   categoryBreakdown: CategoryBreakdown[]
   confidence: { level: string; label: string; description: string }
+  retentionIntention: RetentionIntentionData
   enps: ENPSData
   comparison: ComparisonData | null
   comments: {
@@ -995,6 +1002,46 @@ export default function ReportsPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Retention Intention Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Heart className="h-5 w-5" />
+                定着意向
+              </CardTitle>
+              <CardDescription>
+                「今後も働き続けたいと思いますか？」への回答
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-xl">
+                <p className="text-sm text-muted-foreground mb-2">定着意向スコア</p>
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    'text-5xl font-bold',
+                    reportData.retentionIntention.score === null ? 'text-slate-400' :
+                    reportData.retentionIntention.score >= 3.8 ? 'text-emerald-600' :
+                    reportData.retentionIntention.score >= 3.2 ? 'text-green-600' :
+                    reportData.retentionIntention.score >= 2.7 ? 'text-yellow-600' :
+                    reportData.retentionIntention.score >= 2.0 ? 'text-orange-600' : 'text-red-600'
+                  )}>
+                    {reportData.retentionIntention.score?.toFixed(2) ?? '-'}
+                  </span>
+                  {reportData.retentionIntention.risk && (
+                    <Badge className={cn('text-sm px-3 py-1', getRiskBadgeClass(reportData.retentionIntention.risk.level))}>
+                      {reportData.retentionIntention.risk.label}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">5点満点</p>
+                <p className="text-sm text-muted-foreground mt-4 text-center max-w-md">
+                  この指標は従業員の継続勤務意向を直接測定します。
+                  ドライバー8カテゴリの改善によりこのスコアの向上が期待できます。
+                </p>
               </div>
             </CardContent>
           </Card>

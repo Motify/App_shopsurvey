@@ -32,7 +32,7 @@ const CATEGORY_OPTIONS = [
   { value: 'RESPECT_RECOGNITION', label: '尊重・承認' },
   { value: 'PAY_BENEFITS', label: '給与・待遇' },
   { value: 'WORK_ENVIRONMENT', label: '職場環境' },
-  { value: 'RETENTION_INTENT', label: '定着意向' },
+  { value: 'SKILLS_GROWTH', label: 'スキル・成長' },
 ]
 
 function getRiskBadge(score: number | null) {
