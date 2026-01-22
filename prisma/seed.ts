@@ -1,7 +1,23 @@
 import { PrismaClient, QuestionCategory, Industry } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { randomUUID } from 'crypto'
 
 const prisma = new PrismaClient()
+
+// Helper function to generate a random score within a range
+function randomScore(min: number, max: number): number {
+  return Math.round((Math.random() * (max - min) + min) * 10) / 10
+}
+
+// Generate a random integer between min and max (inclusive)
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+// Generate a unique QR code
+function generateQRCode(): string {
+  return randomUUID().replace(/-/g, '').substring(0, 12)
+}
 
 // 12 questions based on the framework:
 // Q1-Q9: 8 Dimensions (drivers of retention) - 1-5 scale
@@ -201,7 +217,141 @@ async function main() {
   }
   console.log(`Seeded ${benchmarks.length} benchmarks`)
 
+  // Create fake company with shops and survey responses
+  await createFakeCompanyWithData()
+
   console.log('Seeding completed!')
+}
+
+// Create a fake company with 10 shops and 10 employees per shop
+async function createFakeCompanyWithData() {
+  const companyName = 'サンプル株式会社'
+
+  // Check if company already exists
+  const existingCompany = await prisma.company.findFirst({
+    where: { name: companyName }
+  })
+
+  if (existingCompany) {
+    console.log(`Company "${companyName}" already exists, skipping...`)
+    return
+  }
+
+  // Create the company
+  const company = await prisma.company.create({
+    data: {
+      name: companyName,
+      industry: Industry.RESTAURANT,
+      status: 'ACTIVE',
+    },
+  })
+  console.log(`Created company: ${company.name}`)
+
+  // Create admin for the company
+  const hashedPassword = await bcrypt.hash('password123', 12)
+  const admin = await prisma.admin.create({
+    data: {
+      companyId: company.id,
+      email: 'sample@test.com',
+      passwordHash: hashedPassword,
+      name: 'サンプル管理者',
+      isFullAccess: true,
+      status: 'ACTIVE',
+    },
+  })
+  console.log(`Created admin: ${admin.email} / password123`)
+
+  // Shop names (Japanese restaurant/cafe names)
+  const shopNames = [
+    '新宿店',
+    '渋谷店',
+    '池袋店',
+    '銀座店',
+    '品川店',
+    '上野店',
+    '秋葉原店',
+    '六本木店',
+    '表参道店',
+    '横浜店',
+  ]
+
+  // Create 10 shops
+  const shops = []
+  for (const shopName of shopNames) {
+    const shop = await prisma.shop.create({
+      data: {
+        companyId: company.id,
+        name: shopName,
+        qrCode: generateQRCode(),
+        status: 'ACTIVE',
+      },
+    })
+    shops.push(shop)
+  }
+  console.log(`Created ${shops.length} shops`)
+
+  // Create survey responses for each shop (10 employees per shop)
+  let totalResponses = 0
+
+  // Generate responses over the past 6 months
+  const now = new Date()
+
+  for (const shop of shops) {
+    // Create 10 responses per shop
+    for (let i = 0; i < 10; i++) {
+      // Randomize submission date within the last 6 months
+      const daysAgo = randomInt(1, 180)
+      const submittedAt = new Date(now)
+      submittedAt.setDate(submittedAt.getDate() - daysAgo)
+
+      // Generate scores with some variation per shop
+      // Each shop has a base score modifier to create variation between shops
+      const shopModifier = (shops.indexOf(shop) - 5) * 0.15 // -0.75 to +0.75
+
+      // Generate answers for Q1-Q10 (1-5 scale)
+      const answers: Record<string, number> = {}
+      for (let q = 1; q <= 10; q++) {
+        // Base score around 3.5 with variation
+        let score = 3.5 + shopModifier + randomScore(-1, 1)
+        // Clamp to 1-5 range
+        score = Math.max(1, Math.min(5, Math.round(score)))
+        answers[`q${q}`] = score
+      }
+
+      // Generate eNPS score (0-10 scale)
+      // Based on overall satisfaction
+      const avgScore = Object.values(answers).reduce((a, b) => a + b, 0) / 10
+      let enpsScore = Math.round((avgScore - 1) * 2.5) // Map 1-5 to 0-10
+      enpsScore = Math.max(0, Math.min(10, enpsScore + randomInt(-2, 2)))
+
+      // Some employees leave improvement suggestions
+      const improvementTexts = [
+        null,
+        null,
+        null,
+        '休憩時間をもう少し取れるようにしてほしい',
+        'シフトの融通をもう少しきかせてほしい',
+        '給与アップを希望します',
+        'チームのコミュニケーションを改善したい',
+        null,
+        null,
+        '新しいスキルを学べる機会がもっとほしい',
+      ]
+
+      await prisma.response.create({
+        data: {
+          shopId: shop.id,
+          answers,
+          enpsScore,
+          improvementText: improvementTexts[i],
+          submittedAt,
+        },
+      })
+      totalResponses++
+    }
+  }
+
+  console.log(`Created ${totalResponses} survey responses`)
 }
 
 main()
