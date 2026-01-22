@@ -1,13 +1,22 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, Check, X } from 'lucide-react'
+
+// Password validation rules
+const passwordRules = [
+  { key: 'length', label: '8文字以上', test: (p: string) => p.length >= 8 },
+  { key: 'uppercase', label: '大文字を含む (A-Z)', test: (p: string) => /[A-Z]/.test(p) },
+  { key: 'lowercase', label: '小文字を含む (a-z)', test: (p: string) => /[a-z]/.test(p) },
+  { key: 'number', label: '数字を含む (0-9)', test: (p: string) => /[0-9]/.test(p) },
+  { key: 'special', label: '特殊文字を含む (!@#$%^&*等)', test: (p: string) => /[!@#$%^&*(),.?":{}|<>]/.test(p) },
+]
 
 interface TokenValidation {
   valid: boolean
@@ -27,6 +36,16 @@ function SetupPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // Check which password rules are satisfied
+  const ruleResults = useMemo(() => {
+    return passwordRules.map(rule => ({
+      ...rule,
+      passed: rule.test(password),
+    }))
+  }, [password])
+
+  const allRulesPassed = ruleResults.every(r => r.passed)
 
   useEffect(() => {
     if (!token) {
@@ -52,13 +71,13 @@ function SetupPasswordForm() {
     e.preventDefault()
     setError('')
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters')
+    if (!allRulesPassed) {
+      setError('パスワードが要件を満たしていません')
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError('パスワードが一致しません')
       return
     }
 
@@ -163,40 +182,70 @@ function SetupPasswordForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">New Password</Label>
+            <Label htmlFor="password">新しいパスワード</Label>
             <Input
               id="password"
               type="password"
-              placeholder="Minimum 8 characters"
+              placeholder="パスワードを入力"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
               disabled={isSubmitting}
             />
+
+            {/* Password Rules Checklist */}
+            <div className="mt-3 p-3 bg-muted/50 rounded-md">
+              <p className="text-xs font-medium text-muted-foreground mb-2">パスワード要件:</p>
+              <ul className="space-y-1">
+                {ruleResults.map((rule) => (
+                  <li key={rule.key} className="flex items-center gap-2 text-xs">
+                    {rule.passed ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    <span className={rule.passed ? 'text-green-700' : 'text-muted-foreground'}>
+                      {rule.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword">パスワード確認</Label>
             <Input
               id="confirmPassword"
               type="password"
-              placeholder="Re-enter your password"
+              placeholder="パスワードを再入力"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={isSubmitting}
             />
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-xs text-destructive mt-1">パスワードが一致しません</p>
+            )}
+            {confirmPassword && password === confirmPassword && (
+              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                <Check className="h-3 w-3" /> パスワードが一致しています
+              </p>
+            )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting || !allRulesPassed || password !== confirmPassword}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Setting Password...
+                設定中...
               </>
             ) : (
-              'Set Password'
+              'パスワードを設定'
             )}
           </Button>
         </CardContent>
