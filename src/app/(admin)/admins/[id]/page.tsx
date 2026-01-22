@@ -29,6 +29,8 @@ import {
   ChevronDown,
   FolderOpen,
   Shield,
+  KeyRound,
+  Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -190,6 +192,8 @@ export default function AdminEditPage() {
   const [name, setName] = useState('')
   const [isFullAccess, setIsFullAccess] = useState(false)
   const [status, setStatus] = useState<string>('ACTIVE')
+  const [sendingReset, setSendingReset] = useState(false)
+  const [resetSuccess, setResetSuccess] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -262,6 +266,34 @@ export default function AdminEditPage() {
       return next
     })
   }, [])
+
+  const handleResetPassword = async () => {
+    if (!confirm('この管理者にパスワードリセットメールを送信しますか？')) {
+      return
+    }
+
+    setSendingReset(true)
+    setError('')
+    setResetSuccess(false)
+
+    try {
+      const response = await fetch(`/api/admins/${adminId}/reset-password`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send reset email')
+      }
+
+      setResetSuccess(true)
+      setTimeout(() => setResetSuccess(false), 5000) // Hide success after 5 seconds
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'パスワードリセットメールの送信に失敗しました')
+    } finally {
+      setSendingReset(false)
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -388,6 +420,44 @@ export default function AdminEditPage() {
                   全店舗へのアクセスと管理者の管理が可能になります
                 </p>
               </div>
+            </div>
+
+            {/* Password Reset Section */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    <KeyRound className="h-4 w-4 text-muted-foreground" />
+                    パスワードリセット
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    パスワードリセットメールを送信します
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetPassword}
+                  disabled={sendingReset}
+                >
+                  {sendingReset ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      送信中...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      リセットメール送信
+                    </>
+                  )}
+                </Button>
+              </div>
+              {resetSuccess && (
+                <div className="mt-3 p-3 bg-green-50 text-green-700 rounded-md text-sm">
+                  パスワードリセットメールを送信しました。
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
