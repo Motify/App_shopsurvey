@@ -23,6 +23,7 @@ npm run db:seed      # Seed questions and benchmark data
 
 After running `npm run db:seed`:
 - **SysAdmin**: `admin@test.com` / `password123`
+- **Sample Company Admin**: `sample@test.com` / `password123` (with 10 shops and 100 responses)
 
 ## Security
 
@@ -147,6 +148,16 @@ Allows respondents to optionally provide encrypted contact information for follo
 - Rate limit sensitive endpoints using `checkRateLimit()` from `src/lib/rate-limit.ts`
 - Log security events using `logAuditEvent()` from `src/lib/audit.ts`
 - AI analysis results cached in `ResponseAnalysis` table (keyed by shopId + date range)
+- **Dynamic route params** in Next.js 14 API routes must use `Promise<{...}>` type and be awaited:
+  ```typescript
+  export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+  ) {
+    const { id } = await params
+    // ...
+  }
+  ```
 
 ## Environment Variables
 
@@ -196,3 +207,30 @@ The app is configured for Railway deployment:
 - Database-level aggregation using raw SQL for large datasets
 - In-memory tree building for shop hierarchies
 - Client-side caching for AI analysis results between tab switches
+
+## Important Type Patterns
+
+### eNPS Calculation
+The `calculateENPS()` function requires `ResponseWithENPS[]` type:
+```typescript
+import { calculateENPS, ResponseWithENPS } from '@/lib/scoring'
+
+// Query must include enpsScore
+const responses = await prisma.response.findMany({
+  select: { answers: true, enpsScore: true }
+})
+
+// Pass properly typed data
+const enpsResult = calculateENPS(responses.map(r => ({
+  answers: r.answers as ResponseAnswers,
+  enpsScore: r.enpsScore,
+})))
+```
+
+### Set Iteration
+For TypeScript compatibility, use `Array.from()` instead of spread syntax:
+```typescript
+// Don't use: [...new Set(array)]
+// Use instead:
+Array.from(new Set(array))
+```
