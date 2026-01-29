@@ -452,12 +452,12 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">レポート</h1>
-          <p className="text-muted-foreground">店舗ごとの詳細スコアと分析</p>
+          <p className="text-muted-foreground">事業所ごとの詳細スコアと分析</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => router.push('/reports/compare')}>
             <BarChart3 className="mr-2 h-4 w-4" />
-            店舗比較
+            事業所比較
           </Button>
           {reportData && (
             <Button onClick={handleDownloadPDF} disabled={pdfLoading} variant="outline">
@@ -481,14 +481,14 @@ export default function ReportsPage() {
           {/* Shop Selection */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <Label className="mb-2 block">店舗</Label>
+              <Label className="mb-2 block">事業所</Label>
               <Select
                 value={selectedShopId}
                 onValueChange={handleShopChange}
                 disabled={shopsLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="店舗を選択..." />
+                  <SelectValue placeholder="事業所を選択..." />
                 </SelectTrigger>
                 <SelectContent>
                   {shops.map(shop => (
@@ -509,7 +509,7 @@ export default function ReportsPage() {
                 htmlFor="includeChildren"
                 className="text-sm text-muted-foreground cursor-pointer"
               >
-                子店舗を含める
+                子事業所を含める
               </label>
             </div>
           </div>
@@ -645,7 +645,7 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">店舗を選択してレポートを表示</p>
+            <p className="text-muted-foreground">事業所を選択してレポートを表示</p>
           </CardContent>
         </Card>
       )}
@@ -824,8 +824,8 @@ export default function ReportsPage() {
                   <CardTitle className="text-lg">{reportData.shop.name}</CardTitle>
                   <CardDescription>
                     {reportData.includesChildren && reportData.shopCount > 1
-                      ? `${reportData.shopCount} 店舗の集計`
-                      : '単一店舗'}
+                      ? `${reportData.shopCount} 事業所の集計`
+                      : '単一事業所'}
                     {' • '}
                     {reportData.responseCount} 件の回答
                     {reportData.period?.startDate && reportData.period?.endDate && (
@@ -1188,7 +1188,7 @@ export default function ReportsPage() {
           <CardContent className="py-12 text-center">
             <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              この店舗にはまだ回答がありません
+              この事業所にはまだ回答がありません
             </p>
             <p className="text-sm text-muted-foreground mt-2">
               QRコードを配布して回答を収集してください

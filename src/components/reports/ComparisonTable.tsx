@@ -22,7 +22,7 @@ interface ComparisonTableProps {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  MANAGER_LEADERSHIP: '店長・リーダー',
+  MANAGER_LEADERSHIP: 'マネジャー・リーダー',
   SCHEDULE_HOURS: 'シフト・時間',
   TEAMWORK: 'チームワーク',
   WORKLOAD_STAFFING: '忙しさ・負担',
@@ -165,7 +165,7 @@ export function GapInsights({ gaps }: GapInsightsProps) {
     <div className="space-y-4">
       <h3 className="font-bold flex items-center gap-2">
         <AlertTriangle className="h-5 w-5 text-amber-500" />
-        店舗間の差が大きい領域
+        事業所間の差が大きい領域
       </h3>
 
       {gaps.slice(0, 3).map((gap, i) => (

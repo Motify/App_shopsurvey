@@ -25,7 +25,7 @@ interface RankingsViewProps {
 
 const CATEGORY_OPTIONS = [
   { value: 'overall', label: '総合スコア' },
-  { value: 'MANAGER_LEADERSHIP', label: '店長・リーダー' },
+  { value: 'MANAGER_LEADERSHIP', label: 'マネジャー・リーダー' },
   { value: 'SCHEDULE_HOURS', label: 'シフト・時間' },
   { value: 'TEAMWORK', label: 'チームワーク' },
   { value: 'WORKLOAD_STAFFING', label: '忙しさ・負担' },

@@ -71,7 +71,7 @@ export const defaultSortOptions: SortOption[] = [
     compareFn: (a, b) => a.name.localeCompare(b.name),
   },
   {
-    label: '店舗番号順',
+    label: '事業所番号順',
     value: 'shopNumber',
     compareFn: (a, b) => {
       const aNum = a.shopNumber || ''

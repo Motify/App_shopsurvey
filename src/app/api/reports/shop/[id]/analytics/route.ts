@@ -159,7 +159,7 @@ function generateCorrelationInsight(correlations: ReturnType<typeof calculateCor
 
   const top = correlations[0]
   return {
-    ja: `この店舗では「${top.categoryLabel.ja}」が総合満足度に最も強く影響しています。この領域の改善が全体スコア向上に最も効果的です。`,
+    ja: `この事業所では「${top.categoryLabel.ja}」が総合満足度に最も強く影響しています。この領域の改善が全体スコア向上に最も効果的です。`,
     en: `"${top.categoryLabel.en}" has the strongest impact on overall satisfaction. Improving this area will be most effective.`,
   }
 }

@@ -162,11 +162,11 @@ export async function GET(request: Request) {
     const shopIds = shopIdsParam.split(',').filter(id => id.trim())
 
     if (shopIds.length < 2) {
-      return NextResponse.json({ error: '最低2店舗を選択してください' }, { status: 400 })
+      return NextResponse.json({ error: '最低2事業所を選択してください' }, { status: 400 })
     }
 
     if (shopIds.length > 5) {
-      return NextResponse.json({ error: '最大5店舗まで選択できます' }, { status: 400 })
+      return NextResponse.json({ error: '最大5事業所まで選択できます' }, { status: 400 })
     }
 
     // Verify access and get admin info in one query

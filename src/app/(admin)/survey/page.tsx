@@ -85,7 +85,7 @@ function QRCodeTab({ shops }: { shops: Shop[] }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        QRコードを使ってアンケートを配布できます。店舗ページでQRコードを印刷またはダウンロードしてください。
+        QRコードを使ってアンケートを配布できます。事業所ページでQRコードを印刷またはダウンロードしてください。
       </p>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -115,7 +115,7 @@ function QRCodeTab({ shops }: { shops: Shop[] }) {
         <Link href="/shops">
           <Button variant="outline">
             <Store className="mr-2 h-4 w-4" />
-            すべての店舗を表示
+            すべての事業所を表示
           </Button>
         </Link>
       </div>
@@ -262,7 +262,7 @@ function CSVImportModal({
           <DialogTitle>CSVからメールアドレスをインポート</DialogTitle>
           <DialogDescription>
             CSVファイルからメールアドレスを一括で読み込みます。
-            店舗番号(shop_number)または店舗名(shop_name)を含めると複数店舗へ同時送信できます。
+            事業所番号(shop_number)または事業所名(shop_name)を含めると複数事業所へ同時送信できます。
           </DialogDescription>
         </DialogHeader>
 
@@ -300,7 +300,7 @@ function CSVImportModal({
                   {parseResult.hasShopInfo && (
                     <Badge variant="secondary">
                       <Building2 className="mr-1 h-3 w-3" />
-                      複数店舗モード
+                      複数事業所モード
                     </Badge>
                   )}
                 </div>
@@ -315,17 +315,17 @@ function CSVImportModal({
                   <>
                     <div className="flex items-center gap-1">
                       <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>{matchedCount} 店舗マッチ</span>
+                      <span>{matchedCount} 事業所マッチ</span>
                     </div>
                     {unmatchedCount > 0 && (
                       <div className="flex items-center gap-1 text-yellow-600">
                         <AlertTriangle className="h-4 w-4" />
-                        <span>{unmatchedCount} 店舗不明</span>
+                        <span>{unmatchedCount} 事業所不明</span>
                       </div>
                     )}
                     {noShopInfoCount > 0 && (
                       <div className="flex items-center gap-1 text-muted-foreground">
-                        <span>{noShopInfoCount} 店舗指定なし</span>
+                        <span>{noShopInfoCount} 事業所指定なし</span>
                       </div>
                     )}
                   </>
@@ -352,8 +352,8 @@ function CSVImportModal({
               {parseResult.hasShopInfo && unmatchedCount > 0 && (
                 <div className="p-3 bg-yellow-50 text-yellow-700 rounded-md text-sm">
                   <AlertTriangle className="inline h-4 w-4 mr-1" />
-                  {unmatchedCount}件のメールアドレスは店舗が見つからないため送信されません。
-                  店舗番号または店舗名を確認してください。
+                  {unmatchedCount}件のメールアドレスは事業所が見つからないため送信されません。
+                  事業所番号または事業所名を確認してください。
                 </div>
               )}
 
@@ -364,7 +364,7 @@ function CSVImportModal({
                     <TableRow>
                       <TableHead>メールアドレス</TableHead>
                       {parseResult.hasShopInfo && (
-                        <TableHead>店舗</TableHead>
+                        <TableHead>事業所</TableHead>
                       )}
                       <TableHead className="w-32">ステータス</TableHead>
                     </TableRow>
@@ -392,7 +392,7 @@ function CSVImportModal({
                         {matchedCount > 9 && (
                           <TableRow>
                             <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
-                              ... 他 {matchedCount - 9} 件（{entriesByShop.size}店舗）
+                              ... 他 {matchedCount - 9} 件（{entriesByShop.size}事業所）
                             </TableCell>
                           </TableRow>
                         )}
@@ -481,7 +481,7 @@ function CSVImportModal({
             }
           >
             {parseResult?.hasShopInfo
-              ? `${matchedCount}件を${entriesByShop.size}店舗へ追加`
+              ? `${matchedCount}件を${entriesByShop.size}事業所へ追加`
               : `${parseResult?.entries.length || 0}件を追加`}
           </Button>
         </DialogFooter>
@@ -730,7 +730,7 @@ function EmailTab({ shops }: { shops: Shop[] }) {
         {result.shopBreakdown && result.shopBreakdown.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">店舗別内訳</CardTitle>
+              <CardTitle className="text-sm">事業所別内訳</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -795,7 +795,7 @@ function EmailTab({ shops }: { shops: Shop[] }) {
         <div className="p-3 bg-blue-50 text-blue-700 rounded-md text-sm flex items-center gap-2">
           <Building2 className="h-4 w-4 flex-shrink-0" />
           <span>
-            複数店舗モード: {entriesByShop.size}店舗へ{emails.length}件のメールを送信します
+            複数事業所モード: {entriesByShop.size}事業所へ{emails.length}件のメールを送信します
           </span>
           <Button
             variant="ghost"
@@ -814,10 +814,10 @@ function EmailTab({ shops }: { shops: Shop[] }) {
       {/* Shop selection - only show in single-shop mode */}
       {!isMultiShopMode && (
         <div className="space-y-2">
-          <Label>対象店舗 *</Label>
+          <Label>対象事業所 *</Label>
           <Select value={selectedShopId} onValueChange={setSelectedShopId}>
             <SelectTrigger>
-              <SelectValue placeholder="店舗を選択してください" />
+              <SelectValue placeholder="事業所を選択してください" />
             </SelectTrigger>
             <SelectContent>
               {shopOptions.map(option => (
@@ -830,7 +830,7 @@ function EmailTab({ shops }: { shops: Shop[] }) {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            複数店舗に一括送信する場合は、CSVに店舗番号または店舗名を含めてインポートしてください
+            複数事業所に一括送信する場合は、CSVに事業所番号または事業所名を含めてインポートしてください
           </p>
         </div>
       )}
@@ -887,7 +887,7 @@ function EmailTab({ shops }: { shops: Shop[] }) {
               <span>{emailEntries.length}件</span>
               {isMultiShopMode && (
                 <span className="text-xs">
-                  ({entriesByShop.size}店舗)
+                  ({entriesByShop.size}事業所)
                 </span>
               )}
               {!isMultiShopMode && csvCount > 0 && manualCount > 0 && (
@@ -1015,8 +1015,8 @@ function EmailTab({ shops }: { shops: Shop[] }) {
             {isMultiShopMode ? (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">送信先店舗</span>
-                  <span className="font-medium">{entriesByShop.size}店舗</span>
+                  <span className="text-sm text-muted-foreground">送信先事業所</span>
+                  <span className="font-medium">{entriesByShop.size}事業所</span>
                 </div>
                 <div className="text-sm space-y-1 max-h-32 overflow-y-auto">
                   {Array.from(entriesByShop.entries()).map(([shopId, entries]) => {
@@ -1032,7 +1032,7 @@ function EmailTab({ shops }: { shops: Shop[] }) {
               </>
             ) : (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">店舗</span>
+                <span className="text-sm text-muted-foreground">事業所</span>
                 <span className="font-medium">{selectedShop?.name}</span>
               </div>
             )}

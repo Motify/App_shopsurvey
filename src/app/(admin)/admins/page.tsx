@@ -269,7 +269,7 @@ function CSVImportModal({
                         <th className="text-left px-4 py-2 font-medium">名前</th>
                         <th className="text-left px-4 py-2 font-medium">メール</th>
                         <th className="text-left px-4 py-2 font-medium">アクセスレベル</th>
-                        <th className="text-left px-4 py-2 font-medium">担当店舗</th>
+                        <th className="text-left px-4 py-2 font-medium">担当事業所</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -524,7 +524,7 @@ export default function AdminsPage() {
                   <TableHead>メール</TableHead>
                   <TableHead>ステータス</TableHead>
                   <TableHead>アクセスレベル</TableHead>
-                  <TableHead>担当店舗</TableHead>
+                  <TableHead>担当事業所</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -549,9 +549,9 @@ export default function AdminsPage() {
                     </TableCell>
                     <TableCell>
                       {admin.isFullAccess ? (
-                        <span className="text-sm text-muted-foreground">全店舗</span>
+                        <span className="text-sm text-muted-foreground">全事業所</span>
                       ) : (
-                        <span className="text-sm">{admin._count.shopAssignments} 店舗</span>
+                        <span className="text-sm">{admin._count.shopAssignments} 事業所</span>
                       )}
                     </TableCell>
                     <TableCell>

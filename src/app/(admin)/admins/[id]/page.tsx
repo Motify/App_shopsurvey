@@ -153,7 +153,7 @@ function ShopTreeItem({
         <span className="text-sm font-medium">{node.name}</span>
         {hasChildren && (
           <span className="text-xs text-muted-foreground">
-            ({node.children.length} 子店舗)
+            ({node.children.length} 子事業所)
           </span>
         )}
       </div>
@@ -417,7 +417,7 @@ export default function AdminEditPage() {
                   </div>
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  全店舗へのアクセスと管理者の管理が可能になります
+                  全事業所へのアクセスと管理者の管理が可能になります
                 </p>
               </div>
             </div>
@@ -464,11 +464,11 @@ export default function AdminEditPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>店舗アクセス権限</CardTitle>
+            <CardTitle>事業所アクセス権限</CardTitle>
             <CardDescription>
               {isFullAccess
-                ? 'フルアクセスが有効なため、全店舗にアクセスできます'
-                : 'アクセスを許可する店舗を選択してください（親店舗を選択すると子店舗も含まれます）'}
+                ? 'フルアクセスが有効なため、全事業所にアクセスできます'
+                : 'アクセスを許可する事業所を選択してください（親事業所を選択すると子事業所も含まれます）'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -476,14 +476,14 @@ export default function AdminEditPage() {
               <div className="p-8 text-center bg-slate-50 rounded-lg">
                 <Shield className="h-12 w-12 text-blue-500 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">
-                  全 {shops.length} 店舗にアクセス可能
+                  全 {shops.length} 事業所にアクセス可能
                 </p>
               </div>
             ) : shops.length === 0 ? (
               <div className="p-8 text-center bg-slate-50 rounded-lg">
                 <Store className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">
-                  店舗がありません
+                  事業所がありません
                 </p>
               </div>
             ) : (
@@ -502,7 +502,7 @@ export default function AdminEditPage() {
             )}
             {!isFullAccess && shops.length > 0 && (
               <p className="text-sm text-muted-foreground mt-2">
-                {selectedShopIds.size} 店舗を選択中
+                {selectedShopIds.size} 事業所を選択中
               </p>
             )}
           </CardContent>

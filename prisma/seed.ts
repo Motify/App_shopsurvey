@@ -27,7 +27,7 @@ function generateQRCode(): string {
 const questions = [
   {
     order: 1,
-    textJa: '困った時に店長に相談しやすいですか？',
+    textJa: '困った時にマネジャーに相談しやすいですか？',
     textEn: 'Is it easy to consult with your manager when you have problems?',
     category: QuestionCategory.MANAGER_LEADERSHIP,
     isReversed: false,
@@ -36,7 +36,7 @@ const questions = [
   },
   {
     order: 2,
-    textJa: '店長はスタッフを公平に扱っていますか？',
+    textJa: 'マネジャーはスタッフを公平に扱っていますか？',
     textEn: 'Does your manager treat staff fairly?',
     category: QuestionCategory.MANAGER_LEADERSHIP,
     isReversed: false,

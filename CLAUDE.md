@@ -17,6 +17,7 @@ npm run db:generate  # Regenerate Prisma client after schema changes
 npm run db:migrate   # Create and apply database migrations
 npm run db:push      # Push schema changes without migration (dev only)
 npm run db:seed      # Seed questions and benchmark data
+# Note: `npm install` auto-runs `prisma generate` via postinstall hook
 ```
 
 ## Default Login Credentials
@@ -56,14 +57,16 @@ src/
 │   ├── charts/          # Data visualization (ScoreRadarChart)
 │   └── layouts/         # Admin/SysAdmin sidebar layouts
 └── lib/
-    ├── auth.ts          # NextAuth configuration
-    ├── prisma.ts        # Prisma client singleton
-    ├── scoring.ts       # Survey scoring algorithms, risk levels, eNPS
-    ├── access.ts        # Shop access control (full vs limited admin access)
-    ├── rate-limit.ts    # Rate limiting for API endpoints
-    ├── audit.ts         # Audit logging for security events
-    ├── mailgun.ts       # Email service
-    └── qrcode.ts        # QR code generation
+    ├── auth.ts            # NextAuth configuration
+    ├── prisma.ts          # Prisma client singleton
+    ├── scoring.ts         # Survey scoring algorithms, risk levels, eNPS
+    ├── access.ts          # Shop access control (full vs limited admin access)
+    ├── rate-limit.ts      # Rate limiting for API endpoints
+    ├── audit.ts           # Audit logging for security events
+    ├── mailgun.ts         # Email service
+    ├── qrcode.ts          # QR code generation
+    ├── encryption.ts      # AES-256-GCM for identity escrow
+    └── content-flagging.ts # Auto-detection of concerning content
 ```
 
 ### Multi-Tenant Data Model
@@ -233,4 +236,18 @@ For TypeScript compatibility, use `Array.from()` instead of spread syntax:
 // Don't use: [...new Set(array)]
 // Use instead:
 Array.from(new Set(array))
+```
+
+### Shop Access Checks
+Always use `src/lib/access.ts` functions for shop-level authorization:
+```typescript
+import { getAccessibleShopIds, hasShopAccess } from '@/lib/access'
+
+// Get all shops an admin can access
+const { shopIds, isFullAccess } = await getAccessibleShopIds(adminId)
+
+// Check access to a specific shop
+if (!await hasShopAccess(adminId, shopId)) {
+  return Response.json({ error: 'Access denied' }, { status: 403 })
+}
 ```

@@ -120,13 +120,13 @@ export async function POST(request: Request) {
       const name = row.name?.trim()
 
       if (!name) {
-        errors.push({ row: index, message: '店舗名が空です' })
+        errors.push({ row: index, message: '事業所名が空です' })
         continue
       }
 
       // Check for duplicates
       if (shopNameToId.has(name.toLowerCase())) {
-        errors.push({ row: index, message: `店舗「${name}」は既に存在します` })
+        errors.push({ row: index, message: `事業所「${name}」は既に存在します` })
         continue
       }
 
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
         shopNameToId.set(name.toLowerCase(), shop.id)
         created++
       } catch (err) {
-        errors.push({ row: index, message: `店舗「${name}」の作成に失敗しました` })
+        errors.push({ row: index, message: `事業所「${name}」の作成に失敗しました` })
       }
     }
 
@@ -155,20 +155,20 @@ export async function POST(request: Request) {
       const parentName = row.parent_name?.trim()
 
       if (!name) {
-        errors.push({ row: index, message: '店舗名が空です' })
+        errors.push({ row: index, message: '事業所名が空です' })
         continue
       }
 
       // Check for duplicates
       if (shopNameToId.has(name.toLowerCase())) {
-        errors.push({ row: index, message: `店舗「${name}」は既に存在します` })
+        errors.push({ row: index, message: `事業所「${name}」は既に存在します` })
         continue
       }
 
       // Find parent
       const parentId = shopNameToId.get(parentName.toLowerCase())
       if (!parentId) {
-        errors.push({ row: index, message: `親店舗「${parentName}」が見つかりません` })
+        errors.push({ row: index, message: `親事業所「${parentName}」が見つかりません` })
         continue
       }
 
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         shopNameToId.set(name.toLowerCase(), shop.id)
         created++
       } catch (err) {
-        errors.push({ row: index, message: `店舗「${name}」の作成に失敗しました` })
+        errors.push({ row: index, message: `事業所「${name}」の作成に失敗しました` })
       }
     }
 

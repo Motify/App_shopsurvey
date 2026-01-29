@@ -180,7 +180,7 @@ export default function SurveyHistoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>送信日時</TableHead>
-                  <TableHead>店舗</TableHead>
+                  <TableHead>事業所</TableHead>
                   <TableHead className="text-center">方法</TableHead>
                   <TableHead className="text-center">送信数</TableHead>
                   <TableHead className="text-center">開封</TableHead>

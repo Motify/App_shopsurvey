@@ -2,7 +2,7 @@
 // These are the factors that drive employee retention
 // Q10 (Retention Intention) and Q11 (eNPS) are outcome measures, not included here
 export const CATEGORY_MAPPING = {
-  MANAGER_LEADERSHIP: ['q1', 'q2'],     // 店長・リーダー (Q1, Q2)
+  MANAGER_LEADERSHIP: ['q1', 'q2'],     // マネジャー・リーダー (Q1, Q2)
   SCHEDULE_HOURS: ['q3'],               // シフト・時間 (Q3)
   TEAMWORK: ['q4'],                     // チームワーク (Q4)
   WORKLOAD_STAFFING: ['q5'],            // 人員・体制 (Q5 - reverse scored)
@@ -21,7 +21,7 @@ export type CategoryKey = keyof typeof CATEGORY_MAPPING
 
 // Japanese labels for the 8 driver dimensions
 export const CATEGORY_LABELS: Record<CategoryKey, { ja: string; en: string }> = {
-  MANAGER_LEADERSHIP: { ja: '店長・リーダー', en: 'Manager & Leadership' },
+  MANAGER_LEADERSHIP: { ja: 'マネジャー・リーダー', en: 'Manager & Leadership' },
   SCHEDULE_HOURS: { ja: 'シフト・時間', en: 'Schedule & Hours' },
   TEAMWORK: { ja: 'チームワーク', en: 'Teamwork' },
   WORKLOAD_STAFFING: { ja: '人員・体制', en: 'Staffing & Resources' },

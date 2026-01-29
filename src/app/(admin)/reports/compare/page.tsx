@@ -104,7 +104,7 @@ export default function CompareReportsPage() {
 
   const runComparison = async () => {
     if (selectedShops.length < 2) {
-      setError('最低2店舗を選択してください')
+      setError('最低2事業所を選択してください')
       return
     }
 
@@ -145,9 +145,9 @@ export default function CompareReportsPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">店舗比較レポート</h1>
+          <h1 className="text-2xl font-bold">事業所比較レポート</h1>
           <p className="text-muted-foreground">
-            複数店舗のスコアを比較分析します
+            複数事業所のスコアを比較分析します
           </p>
         </div>
       </div>
@@ -155,9 +155,9 @@ export default function CompareReportsPage() {
       {/* Selection Panel */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">比較する店舗を選択</CardTitle>
+          <CardTitle className="text-lg">比較する事業所を選択</CardTitle>
           <CardDescription>
-            2〜5店舗を選択して比較できます
+            2〜5事業所を選択して比較できます
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -328,7 +328,7 @@ export default function CompareReportsPage() {
           {activeTab === 'rankings' && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">店舗ランキング</CardTitle>
+                <CardTitle className="text-lg">事業所ランキング</CardTitle>
                 <CardDescription>
                   カテゴリ別の順位
                 </CardDescription>

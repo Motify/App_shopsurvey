@@ -201,7 +201,7 @@ export default function CompanyReportsPage() {
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">店舗数</CardTitle>
+            <CardTitle className="text-sm font-medium">事業所数</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.summary.totalShops}</div>
@@ -234,7 +234,7 @@ export default function CompanyReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">要注意店舗</CardTitle>
+            <CardTitle className="text-sm font-medium">要注意事業所</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
@@ -291,7 +291,7 @@ export default function CompanyReportsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">リスクレベル分布</CardTitle>
-            <CardDescription>店舗のリスク状態</CardDescription>
+            <CardDescription>事業所のリスク状態</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -352,9 +352,9 @@ export default function CompanyReportsPage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingDown className="h-5 w-5 text-red-500" />
-              低スコア店舗
+              低スコア事業所
             </CardTitle>
-            <CardDescription>改善が必要な店舗</CardDescription>
+            <CardDescription>改善が必要な事業所</CardDescription>
           </CardHeader>
           <CardContent>
             {data.lowestScoringShops.length > 0 ? (
@@ -402,9 +402,9 @@ export default function CompanyReportsPage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-500" />
-              高スコア店舗
+              高スコア事業所
             </CardTitle>
-            <CardDescription>優良店舗</CardDescription>
+            <CardDescription>優良事業所</CardDescription>
           </CardHeader>
           <CardContent>
             {data.highestScoringShops.length > 0 ? (
