@@ -30,6 +30,7 @@ function getStatusBadgeVariant(status: string) {
 export default async function CompaniesPage() {
   const companies = await prisma.company.findMany({
     include: {
+      industry: true,
       _count: {
         select: {
           shops: true,
@@ -97,8 +98,8 @@ export default async function CompaniesPage() {
                         {company.name}
                       </Link>
                     </TableCell>
-                    <TableCell className="capitalize">
-                      {company.industry.toLowerCase().replace('_', ' ')}
+                    <TableCell>
+                      {company.industry.nameJa}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(company.status) as 'success' | 'warning' | 'muted' | 'secondary'}>

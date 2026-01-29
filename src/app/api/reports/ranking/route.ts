@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     // Get admin's company
     const admin = await prisma.admin.findUnique({
       where: { id: session.user.id },
-      include: { company: true },
+      include: { company: { include: { industry: true } } },
     })
 
     if (!admin) {
@@ -212,7 +212,7 @@ export async function GET(request: Request) {
 
     // Get industry benchmark
     const benchmarks = await prisma.benchmark.findMany({
-      where: { industry: admin.company.industry },
+      where: { industryId: admin.company.industryId },
     })
 
     const benchmarkMap: Record<string, number> = {}
@@ -249,7 +249,8 @@ export async function GET(request: Request) {
         responseCount: myCompany.responseCount,
       },
       benchmark: benchmarkMap,
-      industry: admin.company.industry,
+      industry: admin.company.industry.code,
+      industryName: admin.company.industry.nameJa,
     })
   } catch (error) {
     console.error('Error generating ranking:', error)

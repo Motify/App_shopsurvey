@@ -6,11 +6,21 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Creating demo company: iikaisha株式会社')
 
+  // Get the ENTERTAINMENT industry
+  const entertainmentIndustry = await prisma.industryType.findUnique({
+    where: { code: 'ENTERTAINMENT' },
+  })
+
+  if (!entertainmentIndustry) {
+    console.error('ENTERTAINMENT industry not found. Run seed first.')
+    process.exit(1)
+  }
+
   // Create the company (using ENTERTAINMENT for mixed business)
   const company = await prisma.company.create({
     data: {
       name: 'iikaisha株式会社',
-      industry: 'ENTERTAINMENT',
+      industryId: entertainmentIndustry.id,
       status: 'ACTIVE',
     },
   })

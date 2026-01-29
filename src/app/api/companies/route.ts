@@ -7,7 +7,7 @@ import crypto from 'crypto'
 
 const createCompanySchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
-  industry: z.enum(['RESTAURANT', 'HOTEL', 'RETAIL', 'ENTERTAINMENT', 'OTHER']),
+  industryId: z.string().min(1, 'Industry is required'),
   adminName: z.string().min(1, 'Admin name is required'),
   adminEmail: z.string().email('Invalid email address'),
 })
@@ -33,7 +33,19 @@ export async function POST(request: Request) {
       )
     }
 
-    const { companyName, industry, adminName, adminEmail } = validation.data
+    const { companyName, industryId, adminName, adminEmail } = validation.data
+
+    // Check if industry exists
+    const industry = await prisma.industryType.findUnique({
+      where: { id: industryId },
+    })
+
+    if (!industry) {
+      return NextResponse.json(
+        { error: 'Invalid industry selected' },
+        { status: 400 }
+      )
+    }
 
     // Check if admin email already exists
     const existingAdmin = await prisma.admin.findUnique({
@@ -56,7 +68,7 @@ export async function POST(request: Request) {
       const company = await tx.company.create({
         data: {
           name: companyName,
-          industry,
+          industryId,
           status: 'ONBOARDING',
         },
       })

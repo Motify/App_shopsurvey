@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       where: { id: session.user.id },
       include: {
         shopAssignments: true,
-        company: true,
+        company: { include: { industry: true } },
       },
     })
 
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
 
     // Get benchmarks
     const benchmarks = await prisma.benchmark.findMany({
-      where: { industry: admin.company.industry },
+      where: { industryId: admin.company.industryId },
     })
     const benchmarkMap: Record<string, number> = {}
     for (const b of benchmarks) {
@@ -172,7 +172,7 @@ export async function GET(request: Request) {
     // Company info
     doc.setFontSize(11)
     doc.text(`Company: ${admin.company.name}`, 20, 40)
-    doc.text(`Industry: ${admin.company.industry}`, 20, 47)
+    doc.text(`Industry: ${admin.company.industry.nameEn}`, 20, 47)
 
     const periodLabel = startDate && endDate
       ? `Period: ${formatDate(startDate)} - ${formatDate(endDate)}`

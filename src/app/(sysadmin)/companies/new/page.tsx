@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -10,23 +10,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 
-const industries = [
-  { value: 'RESTAURANT', label: 'Restaurant' },
-  { value: 'HOTEL', label: 'Hotel' },
-  { value: 'RETAIL', label: 'Retail' },
-  { value: 'ENTERTAINMENT', label: 'Entertainment' },
-  { value: 'OTHER', label: 'Other' },
-]
+interface Industry {
+  id: string
+  code: string
+  nameJa: string
+  nameEn: string
+}
 
 export default function NewCompanyPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [industries, setIndustries] = useState<Industry[]>([])
+  const [loadingIndustries, setLoadingIndustries] = useState(true)
 
   const [companyName, setCompanyName] = useState('')
-  const [industry, setIndustry] = useState('')
+  const [industryId, setIndustryId] = useState('')
   const [adminName, setAdminName] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
+
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        const response = await fetch('/api/industries')
+        if (response.ok) {
+          const data = await response.json()
+          setIndustries(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch industries:', err)
+      } finally {
+        setLoadingIndustries(false)
+      }
+    }
+    fetchIndustries()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,7 +59,7 @@ export default function NewCompanyPage() {
         },
         body: JSON.stringify({
           companyName,
-          industry,
+          industryId,
           adminName,
           adminEmail,
         }),
@@ -108,14 +126,14 @@ export default function NewCompanyPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="industry">Industry *</Label>
-                <Select value={industry} onValueChange={setIndustry} required disabled={isLoading}>
+                <Select value={industryId} onValueChange={setIndustryId} required disabled={isLoading || loadingIndustries}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select industry" />
+                    <SelectValue placeholder={loadingIndustries ? "Loading industries..." : "Select industry"} />
                   </SelectTrigger>
                   <SelectContent>
                     {industries.map((ind) => (
-                      <SelectItem key={ind.value} value={ind.value}>
-                        {ind.label}
+                      <SelectItem key={ind.id} value={ind.id}>
+                        {ind.nameEn} ({ind.nameJa})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -156,7 +174,7 @@ export default function NewCompanyPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button type="submit" disabled={isLoading || !industry}>
+              <Button type="submit" disabled={isLoading || !industryId || loadingIndustries}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

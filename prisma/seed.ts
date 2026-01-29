@@ -1,4 +1,4 @@
-import { PrismaClient, QuestionCategory, Industry } from '@prisma/client'
+import { PrismaClient, QuestionCategory } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 
@@ -126,58 +126,69 @@ const questions = [
   },
 ]
 
-// Industry benchmarks for the 8 driver dimensions + SKILLS_GROWTH
-const benchmarks = [
-  // RESTAURANT industry benchmarks
-  { industry: Industry.RESTAURANT, category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.4, sampleSize: 1000 },
-  { industry: Industry.RESTAURANT, category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.2, sampleSize: 1000 },
-  { industry: Industry.RESTAURANT, category: QuestionCategory.TEAMWORK, avgScore: 3.5, sampleSize: 1000 },
-  { industry: Industry.RESTAURANT, category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.2, sampleSize: 1000 },
-  { industry: Industry.RESTAURANT, category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.3, sampleSize: 1000 },
-  { industry: Industry.RESTAURANT, category: QuestionCategory.PAY_BENEFITS, avgScore: 3.0, sampleSize: 1000 },
-  { industry: Industry.RESTAURANT, category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.4, sampleSize: 1000 },
-  { industry: Industry.RESTAURANT, category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.1, sampleSize: 1000 },
-
-  // HOTEL industry benchmarks
-  { industry: Industry.HOTEL, category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.5, sampleSize: 800 },
-  { industry: Industry.HOTEL, category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.3, sampleSize: 800 },
-  { industry: Industry.HOTEL, category: QuestionCategory.TEAMWORK, avgScore: 3.6, sampleSize: 800 },
-  { industry: Industry.HOTEL, category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.1, sampleSize: 800 },
-  { industry: Industry.HOTEL, category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.4, sampleSize: 800 },
-  { industry: Industry.HOTEL, category: QuestionCategory.PAY_BENEFITS, avgScore: 3.2, sampleSize: 800 },
-  { industry: Industry.HOTEL, category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.5, sampleSize: 800 },
-  { industry: Industry.HOTEL, category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.3, sampleSize: 800 },
-
-  // RETAIL industry benchmarks
-  { industry: Industry.RETAIL, category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.3, sampleSize: 1200 },
-  { industry: Industry.RETAIL, category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.1, sampleSize: 1200 },
-  { industry: Industry.RETAIL, category: QuestionCategory.TEAMWORK, avgScore: 3.4, sampleSize: 1200 },
-  { industry: Industry.RETAIL, category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.0, sampleSize: 1200 },
-  { industry: Industry.RETAIL, category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.2, sampleSize: 1200 },
-  { industry: Industry.RETAIL, category: QuestionCategory.PAY_BENEFITS, avgScore: 2.9, sampleSize: 1200 },
-  { industry: Industry.RETAIL, category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.3, sampleSize: 1200 },
-  { industry: Industry.RETAIL, category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.0, sampleSize: 1200 },
-
-  // ENTERTAINMENT industry benchmarks
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.6, sampleSize: 500 },
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.4, sampleSize: 500 },
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.TEAMWORK, avgScore: 3.7, sampleSize: 500 },
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.3, sampleSize: 500 },
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.5, sampleSize: 500 },
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.PAY_BENEFITS, avgScore: 3.1, sampleSize: 500 },
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.6, sampleSize: 500 },
-  { industry: Industry.ENTERTAINMENT, category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.4, sampleSize: 500 },
-
-  // OTHER industry benchmarks
-  { industry: Industry.OTHER, category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.4, sampleSize: 600 },
-  { industry: Industry.OTHER, category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.2, sampleSize: 600 },
-  { industry: Industry.OTHER, category: QuestionCategory.TEAMWORK, avgScore: 3.5, sampleSize: 600 },
-  { industry: Industry.OTHER, category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.1, sampleSize: 600 },
-  { industry: Industry.OTHER, category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.3, sampleSize: 600 },
-  { industry: Industry.OTHER, category: QuestionCategory.PAY_BENEFITS, avgScore: 3.0, sampleSize: 600 },
-  { industry: Industry.OTHER, category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.4, sampleSize: 600 },
-  { industry: Industry.OTHER, category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.2, sampleSize: 600 },
+// Default industries with Japanese and English names
+const defaultIndustries = [
+  { code: 'RESTAURANT', nameJa: 'レストラン・飲食', nameEn: 'Restaurant' },
+  { code: 'HOTEL', nameJa: 'ホテル・宿泊', nameEn: 'Hotel' },
+  { code: 'RETAIL', nameJa: '小売・販売', nameEn: 'Retail' },
+  { code: 'ENTERTAINMENT', nameJa: 'エンターテイメント', nameEn: 'Entertainment' },
+  { code: 'OTHER', nameJa: 'その他', nameEn: 'Other' },
 ]
+
+// Industry benchmarks for the 8 driver dimensions + SKILLS_GROWTH
+// Will be populated with industryId after industries are created
+const benchmarkData: Record<string, Array<{ category: QuestionCategory; avgScore: number; sampleSize: number }>> = {
+  RESTAURANT: [
+    { category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.4, sampleSize: 1000 },
+    { category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.2, sampleSize: 1000 },
+    { category: QuestionCategory.TEAMWORK, avgScore: 3.5, sampleSize: 1000 },
+    { category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.2, sampleSize: 1000 },
+    { category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.3, sampleSize: 1000 },
+    { category: QuestionCategory.PAY_BENEFITS, avgScore: 3.0, sampleSize: 1000 },
+    { category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.4, sampleSize: 1000 },
+    { category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.1, sampleSize: 1000 },
+  ],
+  HOTEL: [
+    { category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.5, sampleSize: 800 },
+    { category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.3, sampleSize: 800 },
+    { category: QuestionCategory.TEAMWORK, avgScore: 3.6, sampleSize: 800 },
+    { category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.1, sampleSize: 800 },
+    { category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.4, sampleSize: 800 },
+    { category: QuestionCategory.PAY_BENEFITS, avgScore: 3.2, sampleSize: 800 },
+    { category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.5, sampleSize: 800 },
+    { category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.3, sampleSize: 800 },
+  ],
+  RETAIL: [
+    { category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.3, sampleSize: 1200 },
+    { category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.1, sampleSize: 1200 },
+    { category: QuestionCategory.TEAMWORK, avgScore: 3.4, sampleSize: 1200 },
+    { category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.0, sampleSize: 1200 },
+    { category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.2, sampleSize: 1200 },
+    { category: QuestionCategory.PAY_BENEFITS, avgScore: 2.9, sampleSize: 1200 },
+    { category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.3, sampleSize: 1200 },
+    { category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.0, sampleSize: 1200 },
+  ],
+  ENTERTAINMENT: [
+    { category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.6, sampleSize: 500 },
+    { category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.4, sampleSize: 500 },
+    { category: QuestionCategory.TEAMWORK, avgScore: 3.7, sampleSize: 500 },
+    { category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.3, sampleSize: 500 },
+    { category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.5, sampleSize: 500 },
+    { category: QuestionCategory.PAY_BENEFITS, avgScore: 3.1, sampleSize: 500 },
+    { category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.6, sampleSize: 500 },
+    { category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.4, sampleSize: 500 },
+  ],
+  OTHER: [
+    { category: QuestionCategory.MANAGER_LEADERSHIP, avgScore: 3.4, sampleSize: 600 },
+    { category: QuestionCategory.SCHEDULE_HOURS, avgScore: 3.2, sampleSize: 600 },
+    { category: QuestionCategory.TEAMWORK, avgScore: 3.5, sampleSize: 600 },
+    { category: QuestionCategory.WORKLOAD_STAFFING, avgScore: 3.1, sampleSize: 600 },
+    { category: QuestionCategory.RESPECT_RECOGNITION, avgScore: 3.3, sampleSize: 600 },
+    { category: QuestionCategory.PAY_BENEFITS, avgScore: 3.0, sampleSize: 600 },
+    { category: QuestionCategory.WORK_ENVIRONMENT, avgScore: 3.4, sampleSize: 600 },
+    { category: QuestionCategory.SKILLS_GROWTH, avgScore: 3.2, sampleSize: 600 },
+  ],
+}
 
 async function main() {
   console.log('Seeding database...')
@@ -206,16 +217,45 @@ async function main() {
   }
   console.log(`Seeded ${questions.length} questions`)
 
+  // Seed default industries
+  const industryMap: Record<string, string> = {} // code -> id
+  for (const industry of defaultIndustries) {
+    const created = await prisma.industryType.upsert({
+      where: { code: industry.code },
+      update: {},
+      create: {
+        code: industry.code,
+        nameJa: industry.nameJa,
+        nameEn: industry.nameEn,
+        isDefault: true,
+      },
+    })
+    industryMap[industry.code] = created.id
+  }
+  console.log(`Seeded ${defaultIndustries.length} industries`)
+
   // Clear existing benchmarks and re-seed
   await prisma.benchmark.deleteMany({})
 
   // Seed benchmarks
-  for (const benchmark of benchmarks) {
-    await prisma.benchmark.create({
-      data: benchmark,
-    })
+  let benchmarkCount = 0
+  for (const [industryCode, benchmarks] of Object.entries(benchmarkData)) {
+    const industryId = industryMap[industryCode]
+    if (!industryId) continue
+
+    for (const benchmark of benchmarks) {
+      await prisma.benchmark.create({
+        data: {
+          industryId,
+          category: benchmark.category,
+          avgScore: benchmark.avgScore,
+          sampleSize: benchmark.sampleSize,
+        },
+      })
+      benchmarkCount++
+    }
   }
-  console.log(`Seeded ${benchmarks.length} benchmarks`)
+  console.log(`Seeded ${benchmarkCount} benchmarks`)
 
   // Create fake company with shops and survey responses
   await createFakeCompanyWithData()
@@ -237,11 +277,21 @@ async function createFakeCompanyWithData() {
     return
   }
 
+  // Get the RESTAURANT industry
+  const restaurantIndustry = await prisma.industryType.findUnique({
+    where: { code: 'RESTAURANT' },
+  })
+
+  if (!restaurantIndustry) {
+    console.log('RESTAURANT industry not found, skipping company creation')
+    return
+  }
+
   // Create the company
   const company = await prisma.company.create({
     data: {
       name: companyName,
-      industry: Industry.RESTAURANT,
+      industryId: restaurantIndustry.id,
       status: 'ACTIVE',
     },
   })

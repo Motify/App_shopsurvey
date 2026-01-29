@@ -49,6 +49,7 @@ interface RankingData {
   } | null
   benchmark: Record<string, number>
   industry: string
+  industryName: string
   message?: string
 }
 
@@ -101,14 +102,6 @@ function getPercentileTier(percentile: number): { label: string; color: string; 
   return { label: '下位25%', color: 'red', description: '早急な改善が必要です' }
 }
 
-// Industry label mapping
-const INDUSTRY_LABELS: Record<string, string> = {
-  RESTAURANT: '飲食業',
-  HOTEL: 'ホテル・宿泊業',
-  RETAIL: '小売業',
-  ENTERTAINMENT: 'エンターテインメント',
-  OTHER: 'その他',
-}
 
 // Ranking display component
 function RankBadge({ rank, total }: { rank: number; total: number }) {
@@ -385,7 +378,7 @@ export default function CompanyRankingPage() {
                     総合ランキング
                   </CardTitle>
                   <CardDescription>
-                    {INDUSTRY_LABELS[rankingData.industry] || rankingData.industry}業界
+                    {rankingData.industryName}業界
                     {' • '}
                     {rankingData.totalCompanies}社中
                     {' • '}

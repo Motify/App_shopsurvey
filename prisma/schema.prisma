@@ -30,13 +30,8 @@ enum ShopStatus {
   INACTIVE
 }
 
-enum Industry {
-  RESTAURANT
-  HOTEL
-  RETAIL
-  ENTERTAINMENT
-  OTHER
-}
+// Industry is now a dynamic table instead of enum
+// See IndustryType model below
 
 enum QuestionCategory {
   MANAGER_LEADERSHIP       // マネジャー・リーダー (Q1, Q2)
@@ -69,20 +64,41 @@ model SysAdmin {
 }
 
 // ============================================
+// INDUSTRY TYPE (Dynamic)
+// ============================================
+
+model IndustryType {
+  id        String   @id @default(cuid())
+  code      String   @unique  // e.g., "RESTAURANT", "HOTEL"
+  nameJa    String   @map("name_ja")  // Japanese name
+  nameEn    String   @map("name_en")  // English name
+  isDefault Boolean  @default(false) @map("is_default")  // Built-in industries
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  companies  Company[]
+  benchmarks Benchmark[]
+
+  @@map("industry_types")
+}
+
+// ============================================
 // COMPANY
 // ============================================
 
 model Company {
-  id        String        @id @default(cuid())
-  name      String
-  industry  Industry
-  status    CompanyStatus @default(ONBOARDING)
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id           String        @id @default(cuid())
+  name         String
+  industryId   String        @map("industry_id")
+  status       CompanyStatus @default(ONBOARDING)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  shops  Shop[]
-  admins Admin[]
+  industry IndustryType @relation(fields: [industryId], references: [id])
+  shops    Shop[]
+  admins   Admin[]
 
+  @@index([industryId])
   @@map("companies")
 }
 
@@ -231,13 +247,16 @@ model ResponseAnalysis {
 
 model Benchmark {
   id         String           @id @default(cuid())
-  industry   Industry
+  industryId String           @map("industry_id")
   category   QuestionCategory
   avgScore   Float            @map("avg_score")
   sampleSize Int              @map("sample_size")
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
-  @@unique([industry, category])
+  industry IndustryType @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  @@unique([industryId, category])
+  @@index([industryId])
   @@map("benchmarks")
 }
 

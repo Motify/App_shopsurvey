@@ -412,7 +412,7 @@ export async function GET(
 
     // Get industry benchmark
     const benchmarks = await prisma.benchmark.findMany({
-      where: { industry: shop.company.industry },
+      where: { industryId: shop.company.industryId },
     })
 
     const benchmarkMap: Record<string, number> = {}
@@ -463,7 +463,7 @@ export async function GET(
         id: shop.id,
         name: shop.name,
         companyName: shop.company.name,
-        industry: shop.company.industry,
+        industryId: shop.company.industryId,
       },
       period: startDate || endDate ? {
         startDate: startDate ?? null,

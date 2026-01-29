@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Building2, LogOut, Flag, FileText } from 'lucide-react'
+import { Building2, LogOut, Flag, FileText, Factory } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
@@ -17,6 +17,7 @@ interface SysAdminSidebarProps {
 
 const navigation = [
   { name: 'Companies', href: '/companies', icon: Building2 },
+  { name: 'Industries', href: '/industries', icon: Factory },
   { name: 'Flagged Responses', href: '/flagged', icon: Flag },
   { name: 'Identity Access Log', href: '/identity-logs', icon: FileText },
 ]

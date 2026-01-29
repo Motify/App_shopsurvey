@@ -41,6 +41,7 @@ export default async function CompanyDetailsPage({
   const company = await prisma.company.findUnique({
     where: { id },
     include: {
+      industry: true,
       admins: {
         orderBy: { createdAt: 'asc' },
       },
@@ -69,8 +70,8 @@ export default async function CompanyDetailsPage({
           <div>
             <h1 className="text-3xl font-bold">{company.name}</h1>
             <div className="flex items-center gap-4 mt-2">
-              <span className="text-muted-foreground capitalize">
-                {company.industry.toLowerCase().replace('_', ' ')}
+              <span className="text-muted-foreground">
+                {company.industry.nameJa}
               </span>
               <Badge
                 variant={

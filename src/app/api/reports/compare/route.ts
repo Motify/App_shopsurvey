@@ -330,7 +330,7 @@ export async function GET(request: Request) {
 
     // Get industry benchmark
     const benchmarks = await prisma.benchmark.findMany({
-      where: { industry: admin.company.industry },
+      where: { industryId: admin.company.industryId },
     })
 
     const benchmarkMap: Record<string, number> = {}

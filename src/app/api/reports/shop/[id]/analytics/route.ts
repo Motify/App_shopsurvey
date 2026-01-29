@@ -275,7 +275,7 @@ async function calculatePercentile(shopId: string, companyId: string) {
   // Get company industry
   const company = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { industry: true },
+    select: { industryId: true },
   })
 
   if (!company) return null
@@ -283,7 +283,7 @@ async function calculatePercentile(shopId: string, companyId: string) {
   // Get all shops in same industry with responses
   const allShops = await prisma.shop.findMany({
     where: {
-      company: { industry: company.industry },
+      company: { industryId: company.industryId },
     },
     select: {
       id: true,

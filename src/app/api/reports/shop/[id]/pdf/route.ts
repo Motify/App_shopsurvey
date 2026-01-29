@@ -98,7 +98,7 @@ export async function GET(
     // Get shop info
     const shop = await prisma.shop.findUnique({
       where: { id: shopId },
-      include: { company: true },
+      include: { company: { include: { industry: true } } },
     })
 
     if (!shop) {
@@ -141,7 +141,7 @@ export async function GET(
 
     // Get benchmarks
     const benchmarks = await prisma.benchmark.findMany({
-      where: { industry: shop.company.industry },
+      where: { industryId: shop.company.industryId },
     })
     const benchmarkMap: Record<string, number> = {}
     for (const b of benchmarks) {

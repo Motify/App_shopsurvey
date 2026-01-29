@@ -178,7 +178,7 @@ export async function GET() {
 
     // Get industry benchmarks
     const benchmarks = await prisma.benchmark.findMany({
-      where: { industry: admin.company.industry },
+      where: { industryId: admin.company.industryId },
     })
 
     const benchmarkMap: Record<string, number> = {}
@@ -214,7 +214,7 @@ export async function GET() {
       highestScoringShops,
       company: {
         name: admin.company.name,
-        industry: admin.company.industry,
+        industryId: admin.company.industryId,
       },
       // eNPS data
       enps: {
