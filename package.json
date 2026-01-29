@@ -1,6 +1,6 @@
 {
   "name": "shopsurvey",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Employee retention survey system for multi-store businesses",
   "scripts": {
     "dev": "next dev",
