@@ -79,7 +79,7 @@ async function main() {
     const result = await prisma.$executeRawUnsafe(`
       UPDATE "companies"
       SET "industry_id" = $1
-      WHERE "industry" = $2 AND ("industry_id" IS NULL OR "industry_id" = '')
+      WHERE "industry"::text = $2 AND ("industry_id" IS NULL OR "industry_id" = '')
     `, id, code)
     console.log(`  Updated companies with industry ${code}`)
   }
@@ -100,7 +100,7 @@ async function main() {
     await prisma.$executeRawUnsafe(`
       UPDATE "benchmarks"
       SET "industry_id" = $1
-      WHERE "industry" = $2 AND ("industry_id" IS NULL OR "industry_id" = '')
+      WHERE "industry"::text = $2 AND ("industry_id" IS NULL OR "industry_id" = '')
     `, id, code)
     console.log(`  Updated benchmarks with industry ${code}`)
   }
