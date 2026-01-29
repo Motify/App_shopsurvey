@@ -31,12 +31,12 @@ export async function POST(request: Request) {
 
     const result = await sendEmail({
       to,
-      subject: 'ShopSurvey Test Email',
-      text: 'This is a test email from ShopSurvey. If you received this, your email configuration is working correctly!',
+      subject: '人事CREW Test Email',
+      text: 'This is a test email from 人事CREW. If you received this, your email configuration is working correctly!',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
           <h1>Test Email</h1>
-          <p>This is a test email from ShopSurvey.</p>
+          <p>This is a test email from 人事CREW.</p>
           <p>If you received this, your email configuration is working correctly!</p>
         </div>
       `,

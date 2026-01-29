@@ -10,6 +10,7 @@ function generateShortId(length: number = 8): string {
 
 const createShopSchema = z.object({
   name: z.string().min(1, 'Shop name is required'),
+  shopNumber: z.string().nullable().optional(),
   parentId: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
 })
@@ -135,7 +136,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { name, parentId, address } = validation.data
+    const { name, shopNumber, parentId, address } = validation.data
 
     // Validate parent shop if provided
     if (parentId) {
@@ -157,6 +158,7 @@ export async function POST(request: Request) {
     const shop = await prisma.shop.create({
       data: {
         name,
+        shopNumber: shopNumber || null,
         parentId: parentId || null,
         address: address || null,
         qrCode,

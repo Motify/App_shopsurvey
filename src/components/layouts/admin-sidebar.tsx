@@ -3,9 +3,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { LayoutDashboard, Store, Users, Send, BarChart3, Building2, LogOut } from 'lucide-react'
+import { LayoutDashboard, Store, Users, Send, BarChart3, Building2, LogOut, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Logo } from '@/components/ui/logo'
 
 interface AdminSidebarProps {
   user: {
@@ -22,24 +23,21 @@ export function AdminSidebar({ user, companyName, isFullAccess }: AdminSidebarPr
   const navigation = [
     { name: 'ダッシュボード', href: '/dashboard', icon: LayoutDashboard, show: true },
     { name: '店舗管理', href: '/shops', icon: Store, show: true },
+    { name: 'アンケート配布', href: '/survey', icon: Send, show: true },
     { name: '管理者', href: '/admins', icon: Users, show: isFullAccess },
     { name: 'レポート', href: '/reports', icon: BarChart3, show: true },
     { name: '全社レポート', href: '/reports/company', icon: Building2, show: isFullAccess },
+    { name: '企業ランキング', href: '/reports/ranking', icon: Trophy, show: true },
   ]
 
   return (
-    <div className="flex w-64 flex-col bg-slate-900">
-      <div className="flex h-16 items-center gap-2 px-6 border-b border-slate-800">
-        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-          <span className="text-sm font-bold text-primary-foreground">S</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <span className="text-lg font-semibold text-white block truncate">ShopSurvey</span>
-        </div>
+    <div className="flex w-64 flex-col bg-[#28cc8f]">
+      <div className="flex h-16 items-center px-6 border-b border-[#20b87d]">
+        <Logo size="md" variant="light" />
       </div>
 
-      <div className="px-4 py-3 border-b border-slate-800">
-        <p className="text-xs text-slate-500 tracking-wider">会社</p>
+      <div className="px-4 py-3 border-b border-[#20b87d]">
+        <p className="text-xs text-white/70 tracking-wider">会社</p>
         <p className="text-sm font-medium text-white truncate">{companyName}</p>
       </div>
 
@@ -53,10 +51,10 @@ export function AdminSidebar({ user, companyName, isFullAccess }: AdminSidebarPr
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold transition-colors',
                   isActive
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/90 hover:bg-white/10 hover:text-white'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -66,14 +64,14 @@ export function AdminSidebar({ user, companyName, isFullAccess }: AdminSidebarPr
           })}
       </nav>
 
-      <div className="border-t border-slate-800 p-4">
+      <div className="border-t border-[#20b87d] p-4">
         <div className="mb-3 px-3">
           <p className="text-sm font-medium text-white truncate">{user.name}</p>
-          <p className="text-xs text-slate-400 truncate">{user.email}</p>
+          <p className="text-xs text-white/70 truncate">{user.email}</p>
         </div>
         <Button
           variant="ghost"
-          className="w-full justify-start text-slate-400 hover:text-white hover:bg-slate-800"
+          className="w-full justify-start text-white/90 font-semibold hover:text-white hover:bg-white/10"
           onClick={() => signOut({ callbackUrl: '/login' })}
         >
           <LogOut className="mr-3 h-5 w-5" />

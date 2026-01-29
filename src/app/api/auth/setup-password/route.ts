@@ -2,13 +2,31 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { checkRateLimit, getClientIP, RATE_LIMITS, rateLimitResponse } from '@/lib/rate-limit'
+import { logAuthEvent, AuditAction } from '@/lib/audit'
+
+// Password complexity requirements
+const passwordSchema = z
+  .string()
+  .min(8, 'パスワードは8文字以上必要です')
+  .regex(/[A-Z]/, 'パスワードには大文字を含めてください')
+  .regex(/[a-z]/, 'パスワードには小文字を含めてください')
+  .regex(/[0-9]/, 'パスワードには数字を含めてください')
+  .regex(/[^A-Za-z0-9]/, 'パスワードには特殊文字を含めてください')
 
 const setupPasswordSchema = z.object({
   token: z.string().min(1, 'Token is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: passwordSchema,
 })
 
 export async function POST(request: Request) {
+  // Rate limiting
+  const clientIP = getClientIP(request)
+  const rateLimit = checkRateLimit(`setup-password:${clientIP}`, RATE_LIMITS.passwordSetup)
+  if (!rateLimit.success) {
+    return rateLimitResponse(rateLimit.resetTime)
+  }
+
   try {
     const body = await request.json()
     const validation = setupPasswordSchema.safeParse(body)
@@ -65,6 +83,15 @@ export async function POST(request: Request) {
         status: 'ACTIVE',
       },
     })
+
+    // Audit log
+    await logAuthEvent(
+      AuditAction.PASSWORD_CHANGED,
+      request,
+      admin.email,
+      true,
+      admin.id
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

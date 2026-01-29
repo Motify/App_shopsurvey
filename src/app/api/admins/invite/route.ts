@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { sendAdminInvite } from '@/lib/mailgun'
 import { z } from 'zod'
 import crypto from 'crypto'
+import { logAdminAction, AuditAction } from '@/lib/audit'
 
 const inviteSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -102,7 +103,26 @@ export async function POST(request: Request) {
       // Don't fail the request if email fails - admin is created
     }
 
-    return NextResponse.json({ success: true, admin: newAdmin }, { status: 201 })
+    // Audit log
+    await logAdminAction(
+      AuditAction.ADMIN_INVITED,
+      request,
+      { id: session.user.id, email: session.user.email, role: session.user.role },
+      { type: 'admin', id: newAdmin.id },
+      { invitedEmail: email, isFullAccess }
+    )
+
+    // Return minimal data (don't expose inviteToken)
+    return NextResponse.json({
+      success: true,
+      admin: {
+        id: newAdmin.id,
+        email: newAdmin.email,
+        name: newAdmin.name,
+        isFullAccess: newAdmin.isFullAccess,
+        status: newAdmin.status,
+      },
+    }, { status: 201 })
   } catch (error) {
     console.error('Error inviting admin:', error)
     return NextResponse.json(

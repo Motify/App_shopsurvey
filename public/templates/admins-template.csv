@@ -1,0 +1,4 @@
+name,email,access_level,assigned_shops
+田中太郎,tanaka@example.com,full,
+佐藤花子,sato@example.com,limited,"東京エリア,渋谷店"
+山田次郎,yamada@example.com,limited,大阪エリア

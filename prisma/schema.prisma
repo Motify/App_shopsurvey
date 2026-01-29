@@ -46,15 +46,9 @@ enum QuestionCategory {
   RESPECT_RECOGNITION      // 尊重・承認 (Q6)
   PAY_BENEFITS             // 給与・待遇 (Q7)
   WORK_ENVIRONMENT         // 職場環境 (Q8)
-  RETENTION_INTENT         // 定着意向 (Q9)
-  ENPS                     // eNPS (Q10 - 0-10 scale)
-  FREE_TEXT                // 自由記述 (Q11)
-}
-
-enum QuestionType {
-  SCALE_5                  // 1-5 scale questions
-  SCALE_11                 // 0-10 scale for eNPS
-  FREE_TEXT                // Open-ended text
+  SKILLS_GROWTH            // スキル・成長 (Q9)
+  RETENTION_INTENTION      // 定着意向 (Q10 - outcome)
+  ENPS                     // eNPS (Q11 - 0-10 scale outcome)
 }
 
 // ============================================
@@ -68,6 +62,8 @@ model SysAdmin {
   name         String
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+
+  identityAccessLogs IdentityAccessLog[]
 
   @@map("sys_admins")
 }
@@ -95,21 +91,25 @@ model Company {
 // ============================================
 
 model Shop {
-  id        String     @id @default(cuid())
-  companyId String     @map("company_id")
-  parentId  String?    @map("parent_id")
-  name      String
-  address   String?
-  qrCode    String     @unique @map("qr_code")
-  status    ShopStatus @default(ACTIVE)
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+  id         String     @id @default(cuid())
+  companyId  String     @map("company_id")
+  parentId   String?    @map("parent_id")
+  shopNumber String?    @map("shop_number")
+  name       String
+  address    String?
+  qrCode     String     @unique @map("qr_code")
+  status     ShopStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   company          Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
   parent           Shop?                 @relation("ShopHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children         Shop[]                @relation("ShopHierarchy")
   responses        Response[]
   adminAssignments AdminShopAssignment[]
+  surveyInvites    SurveyInvite[]
+  surveyBatches    SurveyBatch[]
+  analyses         ResponseAnalysis[]
 
   @@index([companyId])
   @@index([parentId])
@@ -162,13 +162,14 @@ model AdminShopAssignment {
 // ============================================
 
 model Question {
-  id            String           @id @default(cuid())
-  order         Int              @unique
-  textJa        String           @map("text_ja")
-  textEn        String           @map("text_en")
-  category      QuestionCategory
-  questionType  QuestionType     @default(SCALE_5) @map("question_type")
-  isReverse     Boolean          @default(false) @map("is_reverse")  // For Q5 where high = bad
+  id         String           @id @default(cuid())
+  order      Int              @unique
+  textJa     String           @map("text_ja")
+  textEn     String           @map("text_en")
+  category   QuestionCategory
+  isReversed Boolean          @default(false) @map("is_reversed")  // For Q5 where high = bad
+  isOutcome  Boolean          @default(false) @map("is_outcome")   // For Q10, Q11 (outcome measures)
+  scale      String           @default("1-5")  // "1-5" or "0-10" for eNPS
 
   @@map("questions")
 }
@@ -178,17 +179,50 @@ model Question {
 // ============================================
 
 model Response {
-  id          String   @id @default(cuid())
-  shopId      String   @map("shop_id")
-  answers     Json     // q1-q9: 1-5 scores, q10: 0-10 eNPS score
-  comment     String?  // q11: Free text comment (stored separately for easy retrieval)
-  submittedAt DateTime @default(now()) @map("submitted_at")
+  id              String   @id @default(cuid())
+  shopId          String   @map("shop_id")
+  answers         Json     // { q1: 4, q2: 3, ... q10: 4 } - Q1 to Q10 (1-5 scale)
+  enpsScore       Int?     @map("enps_score")  // Q11 (0-10 scale) - stored separately
+  comment         String?  // Legacy: Free text comment (kept for backward compatibility)
+  positiveText    String?  @map("positive_text")    // Positive feedback
+  improvementText String?  @map("improvement_text") // Q12: Free text improvement suggestions
 
-  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  // Identity escrow fields
+  encryptedIdentity String?  @map("encrypted_identity")  // Encrypted email or employee ID
+  identityConsent   Boolean  @default(false) @map("identity_consent")  // Did they consent?
+  flagged           Boolean  @default(false)  // Auto-flagged for concerning content
+  flagReason        String?  @map("flag_reason")  // Why it was flagged
+
+  submittedAt     DateTime @default(now()) @map("submitted_at")
+
+  shop              Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  surveyInvite      SurveyInvite?
+  identityAccessLogs IdentityAccessLog[]
 
   @@index([shopId])
   @@index([submittedAt])
+  @@index([flagged])
   @@map("responses")
+}
+
+// ============================================
+// AI RESPONSE ANALYSIS CACHE
+// ============================================
+
+model ResponseAnalysis {
+  id            String   @id @default(cuid())
+  shopId        String   @map("shop_id")
+  startDate     DateTime @map("start_date")
+  endDate       DateTime @map("end_date")
+  responseCount Int      @map("response_count")
+  analysis      Json     // Full analysis result from AI
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, startDate, endDate])
+  @@index([shopId])
+  @@map("response_analyses")
 }
 
 // ============================================
@@ -205,4 +239,108 @@ model Benchmark {
 
   @@unique([industry, category])
   @@map("benchmarks")
+}
+
+// ============================================
+// SURVEY EMAIL DISTRIBUTION
+// ============================================
+
+model SurveyBatch {
+  id        String   @id @default(cuid())
+  shopId    String   @map("shop_id")
+  adminId   String   @map("admin_id")
+  sentAt    DateTime @default(now()) @map("sent_at")
+  totalSent Int      @map("total_sent")
+  method    String   @default("manual") // "csv" or "manual"
+
+  shop    Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  invites SurveyInvite[]
+
+  @@index([shopId])
+  @@index([adminId])
+  @@index([sentAt])
+  @@map("survey_batches")
+}
+
+model SurveyInvite {
+  id          String    @id @default(cuid())
+  batchId     String    @map("batch_id")
+  shopId      String    @map("shop_id")
+  email       String
+  token       String    @unique
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  openedAt    DateTime? @map("opened_at")
+  completedAt DateTime? @map("completed_at")
+  responseId  String?   @unique @map("response_id")
+
+  batch    SurveyBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  shop     Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  response Response?   @relation(fields: [responseId], references: [id])
+
+  @@index([shopId])
+  @@index([batchId])
+  @@index([token])
+  @@map("survey_invites")
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  ADMIN_CREATED
+  ADMIN_UPDATED
+  ADMIN_DELETED
+  ADMIN_INVITED
+  SHOP_CREATED
+  SHOP_UPDATED
+  SHOP_DELETED
+  COMPANY_CREATED
+  COMPANY_UPDATED
+  ACCESS_DENIED
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  userId      String?     @map("user_id")
+  userEmail   String?     @map("user_email")
+  userRole    String?     @map("user_role")
+  targetType  String?     @map("target_type")  // e.g., "admin", "shop", "company"
+  targetId    String?     @map("target_id")
+  ipAddress   String?     @map("ip_address")
+  userAgent   String?     @map("user_agent")
+  details     Json?       // Additional context
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// IDENTITY ACCESS LOG (for escrow system)
+// ============================================
+
+model IdentityAccessLog {
+  id          String   @id @default(cuid())
+  responseId  String   @map("response_id")
+  sysAdminId  String   @map("sys_admin_id")
+  reason      String   // Why access was needed
+  requestedBy String   @map("requested_by")  // Company/person who requested
+  accessedAt  DateTime @default(now()) @map("accessed_at")
+
+  response Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  sysAdmin SysAdmin @relation(fields: [sysAdminId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
+  @@index([sysAdminId])
+  @@index([accessedAt])
+  @@map("identity_access_logs")
 }

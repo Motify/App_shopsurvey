@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma'
 // GET /api/survey/[qrCode] - Get shop and questions for survey (public)
 export async function GET(
   request: Request,
-  { params }: { params: { qrCode: string } }
+  { params }: { params: Promise<{ qrCode: string }> }
 ) {
   try {
-    const { qrCode } = params
+    const { qrCode } = await params
 
     // Find shop by QR code
     const shop = await prisma.shop.findUnique({
@@ -47,8 +47,9 @@ export async function GET(
         textJa: true,
         textEn: true,
         category: true,
-        questionType: true,
-        isReverse: true,
+        isReversed: true,
+        isOutcome: true,
+        scale: true,
       },
     })
 

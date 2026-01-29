@@ -31,6 +31,7 @@ import {
 interface Shop {
   id: string
   name: string
+  shopNumber: string | null
   address: string | null
   qrCode: string
   status: 'ACTIVE' | 'INACTIVE'
@@ -74,6 +75,7 @@ export default function EditShopPage({
   const [copied, setCopied] = useState(false)
 
   const [name, setName] = useState('')
+  const [shopNumber, setShopNumber] = useState('')
   const [parentId, setParentId] = useState<string>('none')
   const [address, setAddress] = useState('')
 
@@ -136,6 +138,7 @@ export default function EditShopPage({
       const data = await response.json()
       setShop(data)
       setName(data.name)
+      setShopNumber(data.shopNumber || '')
       setParentId(data.parentId || 'none')
       setAddress(data.address || '')
     } catch (err) {
@@ -168,6 +171,7 @@ export default function EditShopPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
+          shopNumber: shopNumber || null,
           parentId: parentId === 'none' ? null : parentId,
           address: address || null,
         }),
@@ -338,6 +342,17 @@ export default function EditShopPage({
                     onChange={(e) => setName(e.target.value)}
                     required
                     disabled={saving}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="shopNumber">店舗番号</Label>
+                  <Input
+                    id="shopNumber"
+                    value={shopNumber}
+                    onChange={(e) => setShopNumber(e.target.value)}
+                    disabled={saving}
+                    placeholder="例: T001"
                   />
                 </div>
 

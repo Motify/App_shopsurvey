@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 const updateShopSchema = z.object({
   name: z.string().min(1, 'Shop name is required').optional(),
+  shopNumber: z.string().nullable().optional(),
   parentId: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
@@ -173,7 +174,7 @@ export async function PATCH(
       )
     }
 
-    const { name, parentId, address, status } = validation.data
+    const { name, shopNumber, parentId, address, status } = validation.data
 
     // Validate parent if changing
     if (parentId !== undefined && parentId !== null) {
@@ -201,6 +202,7 @@ export async function PATCH(
       where: { id },
       data: {
         ...(name !== undefined && { name }),
+        ...(shopNumber !== undefined && { shopNumber }),
         ...(parentId !== undefined && { parentId }),
         ...(address !== undefined && { address }),
         ...(status !== undefined && { status }),

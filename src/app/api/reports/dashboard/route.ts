@@ -84,6 +84,7 @@ export async function GET() {
         id: true,
         shopId: true,
         answers: true,
+        enpsScore: true,
         comment: true,
         submittedAt: true,
         shop: {
@@ -101,7 +102,10 @@ export async function GET() {
     const overallRisk = overallScore !== null ? getOverallRiskLevel(overallScore) : null
 
     // Calculate eNPS
-    const enpsResult = calculateENPS(allAnswers)
+    const enpsResult = calculateENPS(responses.map(r => ({
+      answers: r.answers as Record<string, number>,
+      enpsScore: r.enpsScore,
+    })))
     const enpsRisk = getENPSRiskLevel(enpsResult.score)
 
     // Get recent responses (last 10)

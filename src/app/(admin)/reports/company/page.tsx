@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
+  Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CategoryKey, CATEGORY_LABELS } from '@/lib/scoring'
@@ -63,10 +64,34 @@ export default function CompanyReportsPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   useEffect(() => {
     fetchDashboard()
   }, [])
+
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true)
+    try {
+      const response = await fetch('/api/reports/company/pdf')
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF')
+      }
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `company-report-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      console.error('Failed to download PDF:', err)
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   const fetchDashboard = async () => {
     try {
@@ -149,12 +174,26 @@ export default function CompanyReportsPage() {
           <ChevronRight className="h-4 w-4" />
           <span>全社レポート</span>
         </div>
-        <div className="flex items-center gap-3">
-          <Building2 className="h-6 w-6 text-slate-600" />
-          <div>
-            <h1 className="text-2xl font-bold">{data.company.name}</h1>
-            <p className="text-muted-foreground">全社レポート</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-6 w-6 text-slate-600" />
+            <div>
+              <h1 className="text-2xl font-bold">{data.company.name}</h1>
+              <p className="text-muted-foreground">全社レポート</p>
+            </div>
           </div>
+          <Button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            variant="outline"
+          >
+            {downloadingPdf ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            PDFダウンロード
+          </Button>
         </div>
       </div>
 

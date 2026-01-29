@@ -22,7 +22,7 @@ function getMailgunClient() {
 }
 
 const domain = process.env.MAILGUN_DOMAIN || ''
-const fromEmail = process.env.EMAIL_FROM || 'noreply@shopsurvey.com'
+const fromEmail = process.env.EMAIL_FROM || 'noreply@jinjicrew.com'
 
 export interface SendEmailOptions {
   to: string | string[]
@@ -77,19 +77,19 @@ export async function sendAdminInvite(
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background-color: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
           <div style="text-align: center; margin-bottom: 32px;">
-            <div style="display: inline-block; width: 48px; height: 48px; background-color: #000; border-radius: 50%; line-height: 48px; color: #fff; font-size: 24px; font-weight: bold;">S</div>
+            <span style="font-size: 24px; font-weight: bold; color: #1a1a1a;">人事<span style="color: #28cc8f; font-weight: 900;">CREW</span></span>
           </div>
           <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 16px 0; text-align: center;">You've been invited!</h1>
           <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">Hello ${name},</p>
-          <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">You've been invited to join <strong>${companyName}</strong> on ShopSurvey, our employee engagement survey platform.</p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">You've been invited to join <strong>${companyName}</strong> on 人事CREW, our employee engagement survey platform.</p>
           <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 32px 0;">Click the button below to set up your password and get started:</p>
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${setupUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">Set Up Your Account</a>
+            <a href="${setupUrl}" style="display: inline-block; background-color: #28cc8f; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">Set Up Your Account</a>
           </div>
           <p style="color: #888; font-size: 14px; line-height: 20px; margin: 32px 0 0 0;">This link will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.</p>
         </div>
         <div style="text-align: center; margin-top: 24px;">
-          <p style="color: #888; font-size: 12px; margin: 0;">ShopSurvey - Employee Engagement Survey System</p>
+          <p style="color: #888; font-size: 12px; margin: 0;">人事CREW - Employee Engagement Survey System</p>
         </div>
       </div>
     </body>
@@ -100,7 +100,7 @@ export async function sendAdminInvite(
 
 Hello ${name},
 
-You've been invited to join ${companyName} on ShopSurvey, our employee engagement survey platform.
+You've been invited to join ${companyName} on 人事CREW, our employee engagement survey platform.
 
 Click the link below to set up your password and get started:
 ${setupUrl}
@@ -110,7 +110,7 @@ This link will expire in 7 days.
 If you didn't expect this invitation, you can safely ignore this email.
 
 ---
-ShopSurvey - Employee Engagement Survey System`
+人事CREW - Employee Engagement Survey System`
 
   return sendEmail({
     to: email,
@@ -128,7 +128,7 @@ export async function sendPasswordResetEmail(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const resetUrl = `${appUrl}/setup-password?token=${resetToken}&reset=true`
 
-  const subject = 'Reset your ShopSurvey password'
+  const subject = 'Reset your 人事CREW password'
 
   const html = `
     <!DOCTYPE html>
@@ -141,19 +141,19 @@ export async function sendPasswordResetEmail(
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background-color: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
           <div style="text-align: center; margin-bottom: 32px;">
-            <div style="display: inline-block; width: 48px; height: 48px; background-color: #000; border-radius: 50%; line-height: 48px; color: #fff; font-size: 24px; font-weight: bold;">S</div>
+            <span style="font-size: 24px; font-weight: bold; color: #1a1a1a;">人事<span style="color: #28cc8f; font-weight: 900;">CREW</span></span>
           </div>
           <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 16px 0; text-align: center;">Reset Your Password</h1>
           <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">Hello ${name},</p>
-          <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">We received a request to reset your password for your ShopSurvey account.</p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 24px 0;">We received a request to reset your password for your 人事CREW account.</p>
           <p style="color: #4a4a4a; font-size: 16px; line-height: 24px; margin: 0 0 32px 0;">Click the button below to reset your password:</p>
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background-color: #000; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">Reset Password</a>
+            <a href="${resetUrl}" style="display: inline-block; background-color: #28cc8f; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">Reset Password</a>
           </div>
           <p style="color: #888; font-size: 14px; line-height: 20px; margin: 32px 0 0 0;">This link will expire in 7 days. If you didn't request a password reset, you can safely ignore this email.</p>
         </div>
         <div style="text-align: center; margin-top: 24px;">
-          <p style="color: #888; font-size: 12px; margin: 0;">ShopSurvey - Employee Engagement Survey System</p>
+          <p style="color: #888; font-size: 12px; margin: 0;">人事CREW - Employee Engagement Survey System</p>
         </div>
       </div>
     </body>
@@ -164,7 +164,7 @@ export async function sendPasswordResetEmail(
 
 Hello ${name},
 
-We received a request to reset your password for your ShopSurvey account.
+We received a request to reset your password for your 人事CREW account.
 
 Click the link below to reset your password:
 ${resetUrl}
@@ -174,7 +174,7 @@ This link will expire in 7 days.
 If you didn't request a password reset, you can safely ignore this email.
 
 ---
-ShopSurvey - Employee Engagement Survey System`
+人事CREW - Employee Engagement Survey System`
 
   return sendEmail({
     to: email,
@@ -198,14 +198,14 @@ export async function sendSurveyInvite(
       <p>You've been invited to participate in an employee survey for <strong>${shopName}</strong>.</p>
       <p>Your feedback is valuable and will help us create a better workplace.</p>
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${surveyUrl}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+        <a href="${surveyUrl}" style="background-color: #28cc8f; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
           Take the Survey
         </a>
       </div>
       <p style="color: #666; font-size: 14px;">The survey takes approximately 5 minutes to complete.</p>
       <p style="color: #666; font-size: 14px;">Your responses are anonymous.</p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-      <p style="color: #999; font-size: 12px;">ShopSurvey - Employee Retention Survey System</p>
+      <p style="color: #999; font-size: 12px;">人事CREW - Employee Engagement Survey System</p>
     </div>
   `
 
@@ -225,8 +225,165 @@ The survey takes approximately 5 minutes to complete.
 Your responses are anonymous.
 
 ---
-ShopSurvey - Employee Retention Survey System
+人事CREW - Employee Engagement Survey System
   `
+
+  return sendEmail({
+    to: email,
+    subject,
+    text,
+    html,
+  })
+}
+
+export async function sendSurveyInviteJa(
+  email: string,
+  token: string
+) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const surveyUrl = `${appUrl}/survey/e/${token}`
+
+  const subject = 'アンケートへのご協力のお願い'
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Meiryo', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background-color: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            お忙しいところ恐れ入ります。
+          </p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。<br>
+            所要時間は約2分です。
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${surveyUrl}" style="display: inline-block; background-color: #28cc8f; color: #fff; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">
+              アンケートに回答する
+            </a>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 6px; padding: 16px; margin-top: 32px;">
+            <p style="color: #666; font-size: 13px; line-height: 22px; margin: 0;">
+              ※このリンクはあなた専用です。他の方への転送はご遠慮ください。<br>
+              ※回答は匿名で処理され、個人が特定されることはありません。
+            </p>
+          </div>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 32px 0 0 0;">
+            ご協力ありがとうございます。
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 24px;">
+          <p style="color: #888; font-size: 12px; margin: 0;">人事CREW - 従業員エンゲージメント調査システム</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  const text = `アンケートへのご協力のお願い
+
+お忙しいところ恐れ入ります。
+
+職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。
+所要時間は約2分です。
+
+▼ アンケートに回答する
+${surveyUrl}
+
+※このリンクはあなた専用です。他の方への転送はご遠慮ください。
+※回答は匿名で処理され、個人が特定されることはありません。
+
+ご協力ありがとうございます。
+
+---
+人事CREW - 従業員エンゲージメント調査システム`
+
+  return sendEmail({
+    to: email,
+    subject,
+    text,
+    html,
+  })
+}
+
+export async function sendSurveyReminderJa(
+  email: string,
+  token: string
+) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const surveyUrl = `${appUrl}/survey/e/${token}`
+
+  const subject = '【リマインド】アンケートへのご協力のお願い'
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Meiryo', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background-color: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            お忙しいところ恐れ入ります。
+          </p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            先日お送りしたアンケートのリマインドです。<br>
+            まだご回答いただいていない方は、ぜひご協力をお願いいたします。
+          </p>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 0 0 24px 0;">
+            職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。<br>
+            所要時間は約2分です。
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${surveyUrl}" style="display: inline-block; background-color: #28cc8f; color: #fff; padding: 16px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500;">
+              アンケートに回答する
+            </a>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 6px; padding: 16px; margin-top: 32px;">
+            <p style="color: #666; font-size: 13px; line-height: 22px; margin: 0;">
+              ※このリンクはあなた専用です。他の方への転送はご遠慮ください。<br>
+              ※回答は匿名で処理され、個人が特定されることはありません。
+            </p>
+          </div>
+          <p style="color: #4a4a4a; font-size: 16px; line-height: 28px; margin: 32px 0 0 0;">
+            ご協力ありがとうございます。
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 24px;">
+          <p style="color: #888; font-size: 12px; margin: 0;">人事CREW - 従業員エンゲージメント調査システム</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  const text = `【リマインド】アンケートへのご協力のお願い
+
+お忙しいところ恐れ入ります。
+
+先日お送りしたアンケートのリマインドです。
+まだご回答いただいていない方は、ぜひご協力をお願いいたします。
+
+職場環境改善のため、簡単なアンケートへのご協力をお願いいたします。
+所要時間は約2分です。
+
+▼ アンケートに回答する
+${surveyUrl}
+
+※このリンクはあなた専用です。他の方への転送はご遠慮ください。
+※回答は匿名で処理され、個人が特定されることはありません。
+
+ご協力ありがとうございます。
+
+---
+人事CREW - 従業員エンゲージメント調査システム`
 
   return sendEmail({
     to: email,
