@@ -75,7 +75,7 @@ async function main() {
 
   // Step 5: Update companies with the correct industry_id based on old industry enum
   console.log('Step 5: Updating companies with industry_id...')
-  for (const [code, id] of industryMap) {
+  for (const [code, id] of Array.from(industryMap)) {
     const result = await prisma.$executeRawUnsafe(`
       UPDATE "companies"
       SET "industry_id" = $1
@@ -96,7 +96,7 @@ async function main() {
 
   // Step 7: Update benchmarks with the correct industry_id
   console.log('Step 7: Updating benchmarks with industry_id...')
-  for (const [code, id] of industryMap) {
+  for (const [code, id] of Array.from(industryMap)) {
     await prisma.$executeRawUnsafe(`
       UPDATE "benchmarks"
       SET "industry_id" = $1
