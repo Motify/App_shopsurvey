@@ -63,6 +63,18 @@ async function main() {
   const industryMap = new Map(industries.map(i => [i.code, i.id]))
   console.log('Industry mapping:', Object.fromEntries(industryMap))
 
+  // Check if migration already completed (old industry column doesn't exist)
+  const companyColumns = await prisma.$queryRaw<Array<{ column_name: string }>>`
+    SELECT column_name FROM information_schema.columns
+    WHERE table_name = 'companies' AND column_name = 'industry'
+  `
+
+  if (companyColumns.length === 0) {
+    console.log('Migration already completed (industry column not found). Skipping data migration steps.')
+    console.log('\nMigration completed successfully!')
+    return
+  }
+
   // Step 4: Add industry_id column to companies if it doesn't exist
   console.log('Step 4: Adding industry_id to companies...')
   try {
