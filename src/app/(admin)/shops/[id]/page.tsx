@@ -346,7 +346,7 @@ export default function EditShopPage({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="shopNumber">店舗番号</Label>
+                  <Label htmlFor="shopNumber">事業所番号</Label>
                   <Input
                     id="shopNumber"
                     value={shopNumber}

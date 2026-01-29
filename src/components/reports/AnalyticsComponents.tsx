@@ -390,7 +390,7 @@ export function PercentileDisplay({ percentile }: PercentileDisplayProps) {
           <div className="text-center py-6 text-muted-foreground">
             <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p>順位データが利用できません</p>
-            <p className="text-sm mt-1">比較可能な店舗が不足しています</p>
+            <p className="text-sm mt-1">比較可能な事業所が不足しています</p>
           </div>
         </CardContent>
       </Card>

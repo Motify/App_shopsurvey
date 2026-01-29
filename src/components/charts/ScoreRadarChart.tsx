@@ -27,7 +27,7 @@ interface ScoreRadarChartProps {
 
 export function ScoreRadarChart({
   data,
-  shopName = '店舗スコア',
+  shopName = '事業所スコア',
   showBenchmark = true,
   height = 350,
 }: ScoreRadarChartProps) {

@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: '人事CREW - 従業員エンゲージメント調査システム',
-  description: '多店舗ビジネス向け従業員エンゲージメント調査システム',
+  description: '多事業所ビジネス向け従業員エンゲージメント調査システム',
 }
 
 export default function RootLayout({

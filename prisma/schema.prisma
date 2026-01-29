@@ -39,7 +39,7 @@ enum Industry {
 }
 
 enum QuestionCategory {
-  MANAGER_LEADERSHIP       // 店長・リーダー (Q1, Q2)
+  MANAGER_LEADERSHIP       // マネジャー・リーダー (Q1, Q2)
   SCHEDULE_HOURS           // シフト・時間 (Q3)
   TEAMWORK                 // チームワーク (Q4)
   WORKLOAD_STAFFING        // 忙しさ・負担 (Q5 - reverse scored)

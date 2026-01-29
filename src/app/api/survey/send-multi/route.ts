@@ -87,7 +87,7 @@ export async function POST(request: Request) {
         const shopInfo = entry.shopNumber || entry.shopName || '指定なし'
         unmatchedEntries.push({
           email: entry.email,
-          reason: `店舗が見つかりません: ${shopInfo}`,
+          reason: `事業所が見つかりません: ${shopInfo}`,
         })
         continue
       }

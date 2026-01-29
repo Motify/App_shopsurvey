@@ -192,7 +192,7 @@ export async function POST(request: Request) {
             if (!shopId) {
               errors.push({
                 row: rowNum,
-                message: `店舗「${shopName}」が見つかりません`,
+                message: `事業所「${shopName}」が見つかりません`,
               })
               hasError = true
               break

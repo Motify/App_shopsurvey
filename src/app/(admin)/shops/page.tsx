@@ -70,7 +70,7 @@ const shopSortOptions: SortOption<Shop>[] = [
     compareFn: (a, b) => a.name.localeCompare(b.name),
   },
   {
-    label: '店舗番号順',
+    label: '事業所番号順',
     value: 'shopNumber',
     compareFn: (a, b) => {
       const aNum = a.shopNumber || ''
@@ -337,7 +337,7 @@ function CSVImportModal({
                   <AlertCircle className="h-5 w-5 text-yellow-500" />
                 )}
                 <span className="font-medium">
-                  {result.created} / {result.total} 店舗をインポートしました
+                  {result.created} / {result.total} 事業所をインポートしました
                 </span>
               </div>
             </div>
@@ -418,9 +418,9 @@ function CSVImportModal({
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="text-left px-4 py-2 font-medium">店舗番号</th>
-                        <th className="text-left px-4 py-2 font-medium">店舗名</th>
-                        <th className="text-left px-4 py-2 font-medium">親店舗</th>
+                        <th className="text-left px-4 py-2 font-medium">事業所番号</th>
+                        <th className="text-left px-4 py-2 font-medium">事業所名</th>
+                        <th className="text-left px-4 py-2 font-medium">親事業所</th>
                         <th className="text-left px-4 py-2 font-medium">住所</th>
                       </tr>
                     </thead>
@@ -872,7 +872,7 @@ export default function ShopsPage() {
                 onSelectionChange={setSelectedIds}
                 onReorder={handleReorder}
                 renderItem={renderShopItem}
-                emptyMessage="店舗がありません"
+                emptyMessage="事業所がありません"
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 sortValue={sortValue}

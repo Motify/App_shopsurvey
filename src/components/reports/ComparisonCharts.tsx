@@ -31,7 +31,7 @@ interface ComparisonRadarChartProps {
 const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
 
 const CATEGORY_LABELS: Record<string, string> = {
-  MANAGER_LEADERSHIP: '店長・リーダー',
+  MANAGER_LEADERSHIP: 'マネジャー・リーダー',
   SCHEDULE_HOURS: 'シフト・時間',
   TEAMWORK: 'チームワーク',
   WORKLOAD_STAFFING: '忙しさ・負担',

@@ -181,12 +181,12 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">店舗数</CardTitle>
+            <CardTitle className="text-sm font-medium">事業所数</CardTitle>
             <Store className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalShops}</div>
-            <p className="text-xs text-muted-foreground">管理店舗</p>
+            <p className="text-xs text-muted-foreground">管理事業所</p>
           </CardContent>
         </Card>
 
@@ -227,7 +227,7 @@ export default async function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">要注意店舗</CardTitle>
+            <CardTitle className="text-sm font-medium">要注意事業所</CardTitle>
             <AlertTriangle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -272,9 +272,9 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingDown className="h-5 w-5 text-red-500" />
-              低スコア店舗
+              低スコア事業所
             </CardTitle>
-            <CardDescription>改善が必要な店舗</CardDescription>
+            <CardDescription>改善が必要な事業所</CardDescription>
           </CardHeader>
           <CardContent>
             {lowestScoringShops.length > 0 ? (
@@ -318,7 +318,7 @@ export default async function DashboardPage() {
               <div className="mt-4">
                 <Link href="/reports">
                   <Button variant="outline" size="sm" className="w-full">
-                    すべての店舗を見る
+                    すべての事業所を見る
                   </Button>
                 </Link>
               </div>
@@ -373,13 +373,13 @@ export default async function DashboardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Store className="h-4 w-4" />
-              店舗管理
+              事業所管理
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Link href="/shops">
               <Button className="w-full" size="sm">
-                店舗一覧
+                事業所一覧
               </Button>
             </Link>
           </CardContent>
@@ -433,20 +433,20 @@ export default async function DashboardPage() {
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                   1
                 </span>
-                <span>最初の店舗を追加する</span>
+                <span>最初の事業所を追加する</span>
               </li>
               <li className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
                   2
                 </span>
-                <span className="text-muted-foreground">店舗のQRコードを生成</span>
+                <span className="text-muted-foreground">事業所のQRコードを生成</span>
               </li>
               <li className="flex items-center gap-3">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
                   3
                 </span>
                 <span className="text-muted-foreground">
-                  QRコードを店舗に設置して従業員にスキャンしてもらう
+                  QRコードを事業所に設置して従業員にスキャンしてもらう
                 </span>
               </li>
               <li className="flex items-center gap-3">
@@ -462,7 +462,7 @@ export default async function DashboardPage() {
               <Link href="/shops/new">
                 <Button>
                   <Store className="mr-2 h-4 w-4" />
-                  最初の店舗を追加
+                  最初の事業所を追加
                 </Button>
               </Link>
             </div>

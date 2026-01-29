@@ -116,7 +116,7 @@ export function ShopMultiSelector({
   return (
     <div>
       <p className="text-sm text-muted-foreground mb-2">
-        {selected.length} / {max} 店舗を選択中 (最低{min}店舗)
+        {selected.length} / {max} 事業所を選択中 (最低{min}事業所)
       </p>
 
       {/* Search input */}
@@ -124,7 +124,7 @@ export function ShopMultiSelector({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="店舗名で検索..."
+          placeholder="事業所名で検索..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -134,7 +134,7 @@ export function ShopMultiSelector({
       <div className="border rounded-lg max-h-72 overflow-y-auto">
         {filteredShops.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground">
-            {searchQuery ? '検索結果がありません' : '店舗がありません'}
+            {searchQuery ? '検索結果がありません' : '事業所がありません'}
           </div>
         ) : (
           filteredShops.map((shop) => (
@@ -170,7 +170,7 @@ export function ShopMultiSelector({
       </div>
       {selected.length < min && (
         <p className="text-xs text-amber-600 mt-2">
-          比較するには最低{min}店舗を選択してください
+          比較するには最低{min}事業所を選択してください
         </p>
       )}
     </div>
