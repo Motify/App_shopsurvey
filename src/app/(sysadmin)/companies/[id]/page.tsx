@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Plus, UserPlus, Store, Mail } from 'lucide-react'
 import { ResendInviteButton } from './resend-invite-button'
+import { EditCompanyDialog } from './edit-company-dialog'
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('en-US', {
@@ -86,6 +87,11 @@ export default async function CompanyDetailsPage({
               </Badge>
             </div>
           </div>
+          <EditCompanyDialog
+            companyId={company.id}
+            currentIndustryId={company.industryId}
+            currentIndustryName={company.industry.nameJa}
+          />
         </div>
       </div>
 
